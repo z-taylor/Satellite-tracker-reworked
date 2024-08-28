@@ -5,7 +5,6 @@ from PySide6.QtUiTools import QUiLoader
 from PySide6.QtCore import QTimer, QThread, QEventLoop, Signal
 import os
 
-
 class main(QMainWindow):
       def __init__(self):
             super(main, self).__init__()
@@ -21,8 +20,8 @@ class main(QMainWindow):
             #timer1.start(200)
       def savePrefs(self):
             print("save")
-      def cancelPrefs(self):
-            print("cancel")
+      def cancelPrefs(self, preferences_window):
+            preferences_window.close()
       def restoreDefaults(self):
             print("restore defaults")
       def open_preferences(self):
@@ -30,7 +29,7 @@ class main(QMainWindow):
             preferences_ui_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ui files", "Preferences.ui")
             preferences_window = loader.load(preferences_ui_path, None)
             preferences_window.SaveButton_2.clicked.connect(self.savePrefs)
-            preferences_window.CancelButton.clicked.connect(self.cancelPrefs)
+            preferences_window.CancelButton.clicked.connect(lambda: self.cancelPrefs(preferences_window))
             preferences_window.RestoreDefButton.clicked.connect(self.restoreDefaults)
             preferences_window.show()
             loop = QEventLoop()
