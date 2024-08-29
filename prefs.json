@@ -1,0 +1,23 @@
+{
+    "location": [-48.88120089, -123.34616041],
+    "tle_sources": ["https://celestrak.org/NORAD/elements/gp.php?GROUP=active&FORMAT=tle"],
+    "satellite_ids": [25338, 28654, 33591, 40069, 44387, 57166, 59051, 41866, 51850],
+    "radio_config": {
+          "IP": "127.0.0.1",
+          "Port": 4532,
+          "RadioType": "RX",
+          "PTTstatus": "None",
+          "VFO": "N/A",
+          "LOup": 0,
+          "LOdown": 0,
+          "Signaling": []
+    },
+    "rotator_config": {
+          "IP": "127.0.0.1",
+          "Port": 4533,
+          "AZtype": 1,
+          "MinMaxAz": [0, 0],
+          "MinMaxEl": [0, 0],
+          "AzStop": 0
+    }
+}
