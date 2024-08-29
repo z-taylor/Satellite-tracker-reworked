@@ -6,82 +6,16 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>400</width>
-    <height>300</height>
+    <width>301</width>
+    <height>288</height>
    </rect>
   </property>
   <property name="windowTitle">
    <string>Radio connect</string>
   </property>
   <layout class="QGridLayout" name="gridLayout">
-   <item row="5" column="2" colspan="2">
-    <widget class="QSpinBox" name="spinBox_2">
-     <property name="buttonSymbols">
-      <enum>QAbstractSpinBox::ButtonSymbols::UpDownArrows</enum>
-     </property>
-     <property name="maximum">
-      <number>999999999</number>
-     </property>
-    </widget>
-   </item>
-   <item row="8" column="0">
-    <widget class="QLabel" name="label_8">
-     <property name="text">
-      <string>Signaling</string>
-     </property>
-    </widget>
-   </item>
-   <item row="0" column="2" colspan="3">
-    <widget class="QLineEdit" name="lineEdit">
-     <property name="placeholderText">
-      <string>Enter IPv4 address or 'localhost'</string>
-     </property>
-    </widget>
-   </item>
-   <item row="6" column="0">
-    <widget class="QLabel" name="label_7">
-     <property name="text">
-      <string>LO Up</string>
-     </property>
-    </widget>
-   </item>
-   <item row="5" column="4">
-    <widget class="QLabel" name="label_9">
-     <property name="text">
-      <string>MHz</string>
-     </property>
-    </widget>
-   </item>
-   <item row="3" column="0">
-    <widget class="QLabel" name="label_4">
-     <property name="text">
-      <string>PTT Status</string>
-     </property>
-    </widget>
-   </item>
-   <item row="1" column="0">
-    <widget class="QLabel" name="label_2">
-     <property name="text">
-      <string>Port</string>
-     </property>
-    </widget>
-   </item>
-   <item row="6" column="2" colspan="2">
-    <widget class="QSpinBox" name="spinBox_3">
-     <property name="maximum">
-      <number>999999999</number>
-     </property>
-    </widget>
-   </item>
-   <item row="6" column="4">
-    <widget class="QLabel" name="label_10">
-     <property name="text">
-      <string>MHz</string>
-     </property>
-    </widget>
-   </item>
-   <item row="1" column="2" colspan="3">
-    <widget class="QSpinBox" name="spinBox">
+   <item row="1" column="2" colspan="4">
+    <widget class="QSpinBox" name="portBox">
      <property name="maximum">
       <number>65535</number>
      </property>
@@ -90,84 +24,88 @@
      </property>
     </widget>
    </item>
-   <item row="5" column="0">
-    <widget class="QLabel" name="label_6">
+   <item row="1" column="1">
+    <widget class="QLabel" name="label_2">
      <property name="text">
-      <string>LO Down</string>
+      <string>Port</string>
      </property>
     </widget>
    </item>
-   <item row="4" column="0">
-    <widget class="QLabel" name="label_5">
-     <property name="text">
-      <string>VFO Up/Down</string>
-     </property>
-    </widget>
-   </item>
-   <item row="0" column="0">
+   <item row="0" column="1">
     <widget class="QLabel" name="label">
      <property name="text">
       <string>Host: </string>
      </property>
     </widget>
    </item>
-   <item row="4" column="2" colspan="3">
-    <widget class="QComboBox" name="comboBox_3">
-     <item>
-      <property name="text">
-       <string>Not applicable</string>
-      </property>
-     </item>
-     <item>
-      <property name="text">
-       <string>Main ↑/ Sub ↓</string>
-      </property>
-     </item>
-     <item>
-      <property name="text">
-       <string>Sub ↑/ Main ↓</string>
-      </property>
-     </item>
-     <item>
-      <property name="text">
-       <string>A ↑/ B ↓</string>
-      </property>
-     </item>
-     <item>
-      <property name="text">
-       <string>B ↑/ A ↓</string>
-      </property>
-     </item>
+   <item row="6" column="2" colspan="3">
+    <widget class="QSpinBox" name="LOup">
+     <property name="maximum">
+      <number>999999999</number>
+     </property>
     </widget>
    </item>
-   <item row="2" column="0">
+   <item row="9" column="1" colspan="2">
+    <widget class="QPushButton" name="connectButton">
+     <property name="text">
+      <string>Connect</string>
+     </property>
+    </widget>
+   </item>
+   <item row="5" column="2" colspan="3">
+    <widget class="QSpinBox" name="LOdown">
+     <property name="buttonSymbols">
+      <enum>QAbstractSpinBox::ButtonSymbols::UpDownArrows</enum>
+     </property>
+     <property name="maximum">
+      <number>999999999</number>
+     </property>
+    </widget>
+   </item>
+   <item row="2" column="1">
     <widget class="QLabel" name="label_3">
      <property name="text">
       <string>Radio type</string>
      </property>
     </widget>
    </item>
-   <item row="3" column="2" colspan="3">
-    <widget class="QComboBox" name="comboBox_2">
-     <item>
-      <property name="text">
-       <string>None</string>
-      </property>
-     </item>
-     <item>
-      <property name="text">
-       <string>Read PTT</string>
-      </property>
-     </item>
-     <item>
-      <property name="text">
-       <string>Read DCD</string>
-      </property>
-     </item>
+   <item row="8" column="3">
+    <widget class="QCheckBox" name="signalLOS">
+     <property name="text">
+      <string>LOS</string>
+     </property>
     </widget>
    </item>
-   <item row="2" column="2" colspan="3">
-    <widget class="QComboBox" name="comboBox">
+   <item row="9" column="3" colspan="3">
+    <widget class="QPushButton" name="saveButton">
+     <property name="text">
+      <string>Save configuration</string>
+     </property>
+    </widget>
+   </item>
+   <item row="6" column="5">
+    <widget class="QLabel" name="label_10">
+     <property name="text">
+      <string>MHz</string>
+     </property>
+    </widget>
+   </item>
+   <item row="4" column="1">
+    <widget class="QLabel" name="label_5">
+     <property name="text">
+      <string>VFO Up/Down</string>
+     </property>
+    </widget>
+   </item>
+   <item row="8" column="1">
+    <widget class="QLabel" name="label_8">
+     <property name="text">
+      <string>Signaling</string>
+     </property>
+    </widget>
+   </item>
+   <item row="2" column="2" colspan="4">
+    <widget class="QComboBox" name="rType">
      <item>
       <property name="text">
        <string>RX only</string>
@@ -200,18 +138,94 @@
      </item>
     </widget>
    </item>
+   <item row="5" column="1">
+    <widget class="QLabel" name="label_6">
+     <property name="text">
+      <string>LO Down</string>
+     </property>
+    </widget>
+   </item>
+   <item row="6" column="1">
+    <widget class="QLabel" name="label_7">
+     <property name="text">
+      <string>LO Up</string>
+     </property>
+    </widget>
+   </item>
+   <item row="4" column="2" colspan="4">
+    <widget class="QComboBox" name="VFOtype">
+     <item>
+      <property name="text">
+       <string>Not applicable</string>
+      </property>
+     </item>
+     <item>
+      <property name="text">
+       <string>Main ↑/ Sub ↓</string>
+      </property>
+     </item>
+     <item>
+      <property name="text">
+       <string>Sub ↑/ Main ↓</string>
+      </property>
+     </item>
+     <item>
+      <property name="text">
+       <string>A ↑/ B ↓</string>
+      </property>
+     </item>
+     <item>
+      <property name="text">
+       <string>B ↑/ A ↓</string>
+      </property>
+     </item>
+    </widget>
+   </item>
+   <item row="0" column="2" colspan="4">
+    <widget class="QLineEdit" name="ipBox">
+     <property name="placeholderText">
+      <string>Enter IPv4 address or 'localhost'</string>
+     </property>
+    </widget>
+   </item>
    <item row="8" column="2">
-    <widget class="QCheckBox" name="checkBox">
+    <widget class="QCheckBox" name="signalAOS">
      <property name="text">
       <string>AOS</string>
      </property>
     </widget>
    </item>
-   <item row="8" column="3">
-    <widget class="QCheckBox" name="checkBox_2">
+   <item row="5" column="5">
+    <widget class="QLabel" name="label_9">
      <property name="text">
-      <string>LOS</string>
+      <string>MHz</string>
      </property>
+    </widget>
+   </item>
+   <item row="3" column="1">
+    <widget class="QLabel" name="label_4">
+     <property name="text">
+      <string>PTT Status</string>
+     </property>
+    </widget>
+   </item>
+   <item row="3" column="2" colspan="4">
+    <widget class="QComboBox" name="pttStatus">
+     <item>
+      <property name="text">
+       <string>None</string>
+      </property>
+     </item>
+     <item>
+      <property name="text">
+       <string>Read PTT</string>
+      </property>
+     </item>
+     <item>
+      <property name="text">
+       <string>Read DCD</string>
+      </property>
+     </item>
     </widget>
    </item>
   </layout>

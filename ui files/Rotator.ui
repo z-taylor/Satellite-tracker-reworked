@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>400</width>
+    <width>287</width>
     <height>300</height>
    </rect>
   </property>
@@ -14,10 +14,20 @@
    <string>Rotator connect</string>
   </property>
   <layout class="QGridLayout" name="gridLayout">
-   <item row="0" column="2" colspan="3">
-    <widget class="QLineEdit" name="lineEdit">
-     <property name="placeholderText">
-      <string>Enter IPv4 address or 'localhost'</string>
+   <item row="5" column="2" colspan="2">
+    <widget class="QLabel" name="label_6">
+     <property name="text">
+      <string>Azimuth end stop position</string>
+     </property>
+    </widget>
+   </item>
+   <item row="3" column="2">
+    <widget class="QSpinBox" name="MinAZ">
+     <property name="minimum">
+      <number>-200</number>
+     </property>
+     <property name="maximum">
+      <number>100</number>
      </property>
     </widget>
    </item>
@@ -28,34 +38,20 @@
      </property>
     </widget>
    </item>
-   <item row="1" column="0">
-    <widget class="QLabel" name="label_2">
+   <item row="3" column="3">
+    <widget class="QLabel" name="label_7">
      <property name="text">
-      <string>Port</string>
+      <string>Max Az</string>
      </property>
     </widget>
    </item>
    <item row="1" column="2" colspan="3">
-    <widget class="QSpinBox" name="spinBox">
+    <widget class="QSpinBox" name="portBox">
      <property name="maximum">
       <number>65535</number>
      </property>
      <property name="value">
       <number>4533</number>
-     </property>
-    </widget>
-   </item>
-   <item row="4" column="0">
-    <widget class="QLabel" name="label_5">
-     <property name="text">
-      <string>Min El</string>
-     </property>
-    </widget>
-   </item>
-   <item row="0" column="0">
-    <widget class="QLabel" name="label">
-     <property name="text">
-      <string>Host: </string>
      </property>
     </widget>
    </item>
@@ -66,8 +62,83 @@
      </property>
     </widget>
    </item>
+   <item row="3" column="4">
+    <widget class="QSpinBox" name="MaxAZ">
+     <property name="maximum">
+      <number>450</number>
+     </property>
+    </widget>
+   </item>
+   <item row="0" column="0">
+    <widget class="QLabel" name="label">
+     <property name="text">
+      <string>Host: </string>
+     </property>
+    </widget>
+   </item>
+   <item row="4" column="3">
+    <widget class="QLabel" name="label_8">
+     <property name="text">
+      <string>Max El</string>
+     </property>
+    </widget>
+   </item>
+   <item row="0" column="2" colspan="3">
+    <widget class="QLineEdit" name="ipBox">
+     <property name="placeholderText">
+      <string>Enter IPv4 address or 'localhost'</string>
+     </property>
+    </widget>
+   </item>
+   <item row="4" column="4">
+    <widget class="QSpinBox" name="MaxEL">
+     <property name="minimum">
+      <number>-10</number>
+     </property>
+     <property name="maximum">
+      <number>180</number>
+     </property>
+    </widget>
+   </item>
+   <item row="4" column="0">
+    <widget class="QLabel" name="label_5">
+     <property name="text">
+      <string>Min El</string>
+     </property>
+    </widget>
+   </item>
+   <item row="4" column="2">
+    <widget class="QSpinBox" name="MinEL">
+     <property name="minimum">
+      <number>-10</number>
+     </property>
+     <property name="maximum">
+      <number>180</number>
+     </property>
+    </widget>
+   </item>
+   <item row="5" column="4">
+    <widget class="QSpinBox" name="AZendPos">
+     <property name="buttonSymbols">
+      <enum>QAbstractSpinBox::ButtonSymbols::UpDownArrows</enum>
+     </property>
+     <property name="minimum">
+      <number>-180</number>
+     </property>
+     <property name="maximum">
+      <number>360</number>
+     </property>
+    </widget>
+   </item>
+   <item row="1" column="0">
+    <widget class="QLabel" name="label_2">
+     <property name="text">
+      <string>Port</string>
+     </property>
+    </widget>
+   </item>
    <item row="2" column="2" colspan="3">
-    <widget class="QComboBox" name="comboBox">
+    <widget class="QComboBox" name="AZtype">
      <item>
       <property name="text">
        <string>0°→180°→360°</string>
@@ -80,75 +151,30 @@
      </item>
     </widget>
    </item>
-   <item row="3" column="2">
-    <widget class="QSpinBox" name="spinBox_3">
-     <property name="minimum">
-      <number>-200</number>
+   <item row="6" column="0" colspan="5">
+    <widget class="QWidget" name="widget" native="true">
+     <property name="sizePolicy">
+      <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+       <horstretch>0</horstretch>
+       <verstretch>0</verstretch>
+      </sizepolicy>
      </property>
-     <property name="maximum">
-      <number>100</number>
-     </property>
-    </widget>
-   </item>
-   <item row="3" column="3">
-    <widget class="QLabel" name="label_7">
-     <property name="text">
-      <string>Max Az</string>
-     </property>
-    </widget>
-   </item>
-   <item row="3" column="4">
-    <widget class="QSpinBox" name="spinBox_4">
-     <property name="maximum">
-      <number>450</number>
-     </property>
-    </widget>
-   </item>
-   <item row="4" column="2">
-    <widget class="QSpinBox" name="spinBox_5">
-     <property name="minimum">
-      <number>-10</number>
-     </property>
-     <property name="maximum">
-      <number>180</number>
-     </property>
-    </widget>
-   </item>
-   <item row="4" column="3">
-    <widget class="QLabel" name="label_8">
-     <property name="text">
-      <string>Max El</string>
-     </property>
-    </widget>
-   </item>
-   <item row="4" column="4">
-    <widget class="QSpinBox" name="spinBox_6">
-     <property name="minimum">
-      <number>-10</number>
-     </property>
-     <property name="maximum">
-      <number>180</number>
-     </property>
-    </widget>
-   </item>
-   <item row="5" column="4">
-    <widget class="QSpinBox" name="spinBox_2">
-     <property name="buttonSymbols">
-      <enum>QAbstractSpinBox::ButtonSymbols::UpDownArrows</enum>
-     </property>
-     <property name="minimum">
-      <number>-180</number>
-     </property>
-     <property name="maximum">
-      <number>360</number>
-     </property>
-    </widget>
-   </item>
-   <item row="5" column="2" colspan="2">
-    <widget class="QLabel" name="label_6">
-     <property name="text">
-      <string>Azimuth end stop position</string>
-     </property>
+     <layout class="QGridLayout" name="gridLayout_2">
+      <item row="1" column="0">
+       <widget class="QPushButton" name="connectButton">
+        <property name="text">
+         <string>Connect</string>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="1">
+       <widget class="QPushButton" name="saveButton">
+        <property name="text">
+         <string>Save configuration</string>
+        </property>
+       </widget>
+      </item>
+     </layout>
     </widget>
    </item>
   </layout>

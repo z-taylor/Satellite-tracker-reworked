@@ -23,15 +23,6 @@ class main(QMainWindow):
             print("reset defaults")
       def confirmNo(self, preferences_window):
             preferences_window.close()
-      def savePrefs(self):
-            try:
-                  #write to json file
-                  print("try")
-            except:
-                  #if no json file present, create a json file and write preferences to it
-                  print("except")
-      def cancelPrefs(self, confirm_window):
-            confirm_window.close()
       def restoreDefaults(self):
             loader = QUiLoader()
             confirm_ui_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ui files", "ConfirmChoice.ui")
@@ -41,6 +32,15 @@ class main(QMainWindow):
             confirm_window.show()
             loop = QEventLoop()
             loop.exec()
+      def savePrefs(self):
+            try:
+                  #write to json file
+                  print("try")
+            except:
+                  #if no json file present, create a json file and write preferences to it
+                  print("except")
+      def cancelPrefs(self, confirm_window):
+            confirm_window.close()
       def open_preferences(self):
             loader = QUiLoader()
             preferences_ui_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ui files", "Preferences.ui")
@@ -51,17 +51,33 @@ class main(QMainWindow):
             preferences_window.show()
             loop = QEventLoop()
             loop.exec()
+      def radSave(self):
+            print("save")
+            #code to save
+      def radConnect(self):
+            print("connect")
+            #code to connect
       def open_radio(self):
             loader = QUiLoader()
             radio_ui_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ui files", "Radio.ui")
             radio_window = loader.load(radio_ui_path, None)
+            radio_window.saveButton.clicked.connect(self.radSave)
+            radio_window.connectButton.clicked.connect(self.radConnect)
             radio_window.show()
             loop = QEventLoop()
             loop.exec()
+      def rotSave(self):
+            print("save")
+            #code to save
+      def rotConnect(self):
+            print("connect")
+            #code to connect
       def open_rotator(self):
             loader = QUiLoader()
             rotator_ui_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ui files", "Rotator.ui")
             rotator_window = loader.load(rotator_ui_path, None)
+            rotator_window.saveButton.clicked.connect(self.rotSave)
+            rotator_window.connectButton.clicked.connect(self.rotConnect)
             rotator_window.show()
             loop = QEventLoop()
             loop.exec()
