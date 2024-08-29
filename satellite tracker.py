@@ -18,12 +18,29 @@ class main(QMainWindow):
             #timer1 = QTimer(self)
             #timer1.timeout.connect(self.update_sat_info)
             #timer1.start(200)
-      def savePrefs(self):
-            print("save")
-      def cancelPrefs(self, preferences_window):
+      def confirmYes(self):
+            #load predefined default settings into json file
+            print("reset defaults")
+      def confirmNo(self, preferences_window):
             preferences_window.close()
+      def savePrefs(self):
+            try:
+                  #write to json file
+                  print("try")
+            except:
+                  #if no json file present, create a json file and write preferences to it
+                  print("except")
+      def cancelPrefs(self, confirm_window):
+            confirm_window.close()
       def restoreDefaults(self):
-            print("restore defaults")
+            loader = QUiLoader()
+            confirm_ui_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ui files", "ConfirmChoice.ui")
+            confirm_window = loader.load(confirm_ui_path, None)
+            confirm_window.YesButton.clicked.connect(self.confirmYes)
+            confirm_window.NoButton.clicked.connect(lambda: self.confirmNo(confirm_window))
+            confirm_window.show()
+            loop = QEventLoop()
+            loop.exec()
       def open_preferences(self):
             loader = QUiLoader()
             preferences_ui_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ui files", "Preferences.ui")
