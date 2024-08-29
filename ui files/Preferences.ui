@@ -49,7 +49,7 @@
           <string/>
          </property>
          <property name="text">
-          <string/>
+          <string>-48.876667</string>
          </property>
          <property name="placeholderText">
           <string>Input lattitude here</string>
@@ -93,6 +93,9 @@
        </item>
        <item row="4" column="0">
         <widget class="QLineEdit" name="LonInputBox">
+         <property name="text">
+          <string>-123.393333</string>
+         </property>
          <property name="placeholderText">
           <string>Input longitude here</string>
          </property>
