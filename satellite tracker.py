@@ -12,7 +12,7 @@ def error(path):
      if not QApplication.instance():
          app = QApplication(sys.argv)
      loader = QUiLoader()
-     error_ui_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ui files", path)
+     error_ui_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ui files", "errors", path)
      error_window = loader.load(error_ui_path, None)
      error_window.OKbutton.clicked.connect(error_window.close)
      error_window.show()
@@ -201,7 +201,46 @@ class read:
 
      lattitude, longitude = location
      period, unit = TLEupdate
+class geolocate:
+     def __init__(self):
+          import platform
+          self.varOS = platform.system()
+          self.lat = None
+          self.lon = None
+          self.accuracy = None
 
+          if self.varOS == "Linux":
+               self._get_location_linux()
+          elif self.varOS == "Windows":
+               self._get_location_windows()
+
+     def _get_location_linux(self):
+          import dbus
+          bus = dbus.SystemBus()
+          obj = bus.get_object('org.freedesktop.GeoClue2', '/org/freedesktop/GeoClue2/Client')
+          iface = dbus.Interface(obj, dbus_interface='org.freedesktop.GeoClue2.Client')
+          location = iface.GetLocation()
+          self.lat = location['Latitude']
+          self.lon = location['Longitude']
+          self.accuracy = location['Accuracy']
+
+     def _get_location_windows(self):
+          import asyncio
+          from winrt.windows.devices.geolocation import Geolocator, PositionAccuracy
+
+          async def get_location():
+               geolocator = Geolocator()
+               geolocator.desired_accuracy = PositionAccuracy.HIGH
+               pos = await geolocator.get_geoposition_async()
+
+               self.lat = pos.coordinate.point.position.latitude
+               self.lon = pos.coordinate.point.position.longitude
+               self.accuracy = pos.coordinate.accuracy
+          asyncio.run(get_location())
+
+     def get_coordinates(self):
+          print("Geolocation accuracy is within "+ self.accuracy +" meters.")
+          return self.lat, self.lon
 class main(QMainWindow):
      def __init__(self):
           super(main, self).__init__()
@@ -216,6 +255,39 @@ class main(QMainWindow):
           #timer1.timeout.connect(self.update_sat_info)
           #timer1.start(200)
 
+     def geolocate(self, preferences_window):
+          import platform
+          varOS = platform.system()
+          lat = None
+          lon = None
+          accuracy = None
+
+          def _get_location_linux():
+               import gi
+               gi.require_version('Geoclue', '2.0')
+               from gi.repository import Geoclue
+               clue = Geoclue.Simple.new_sync('something',Geoclue.AccuracyLevel.NEIGHBORHOOD,None)
+               location = clue.get_location()
+               lat, lon = location.get_property('latitude'), location.get_property('longitude')
+               return lat, lon
+          def _get_location_windows():
+               import asyncio
+               from winrt.windows.devices.geolocation import Geolocator, PositionAccuracy
+               async def get_location():
+                    geolocator = Geolocator()
+                    geolocator.desired_accuracy = PositionAccuracy.HIGH
+                    pos = await geolocator.get_geoposition_async()
+
+                    lat = pos.coordinate.point.position.latitude
+                    lon = pos.coordinate.point.position.longitude
+               asyncio.run(get_location())
+               return lat, lon
+          if varOS == "Linux":
+               lat, lon = _get_location_linux()
+          elif varOS == "Windows":
+               lat, lon = _get_location_windows()
+          preferences_window.LatInputBox.text(str(lat))
+          preferences_window.LonInputBox.text(str(lon))
      def confirmYes(self, confirm_window):
           writeDefPrefsFile()
           confirm_window.close()
@@ -266,6 +338,7 @@ class main(QMainWindow):
           preferences_window.SaveButton_2.clicked.connect(lambda: self.savePrefs(preferences_window))
           preferences_window.CancelButton.clicked.connect(lambda: self.cancelPrefs(preferences_window))
           preferences_window.RestoreDefButton.clicked.connect(self.restoreDefaults)
+          preferences_window.GeolocateButton.clicked.connect(lambda: self.geolocate(preferences_window))
           
           preferences_window.TLEadd.clicked.connect(lambda: addSource(preferences_window))
           preferences_window.TLEremove.clicked.connect(lambda: deleteSource(preferences_window))
