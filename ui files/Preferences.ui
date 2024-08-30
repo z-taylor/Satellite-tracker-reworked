@@ -52,7 +52,7 @@
           <string>-48.876667</string>
          </property>
          <property name="placeholderText">
-          <string>Input lattitude here</string>
+          <string>Input latitude here</string>
          </property>
         </widget>
        </item>
