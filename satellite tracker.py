@@ -8,10 +8,21 @@ import os
 import json
 import re
 
+def error(path):
+     if not QApplication.instance():
+         app = QApplication(sys.argv)
+     loader = QUiLoader()
+     error_ui_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ui files", path)
+     error_window = loader.load(error_ui_path, None)
+     error_window.OKbutton.clicked.connect(error_window.close)
+     error_window.show()
+     loop = QEventLoop()
+     loop.exec()
+
 def writeDefPrefsFile():
      defaultConfig = {
           "location": [
-               -48.88120089, -123.34616041
+               "-48.88120089", "-123.34616041"
           ],
           "tle_sources": [
                "https://celestrak.org/NORAD/elements/gp.php?GROUP=active&FORMAT=tle"
@@ -20,7 +31,7 @@ def writeDefPrefsFile():
                24, "Hours"
           ],
           "satellite_ids": [
-               25338, 28654, 33591, 40069, 44387, 57166, 59051, 41866, 51850
+               "25338", "28654", "33591", "40069", "44387", "57166", "59051", "41866", "51850"
           ],
           "radio_config": {
                "IP": "127.0.0.1",
@@ -36,8 +47,14 @@ def writeDefPrefsFile():
                "IP": "127.0.0.1",
                "Port": 4533,
                "AZtype": 1,
-               "MinMaxAz": [0, 0],
-               "MinMaxEl": [0, 0],
+               "MinMaxAz": [
+                    0,
+                    0
+               ],
+               "MinMaxEl": [
+                    0, 
+                    0
+               ],
                "AzStop": 0,
           }
      }
@@ -61,31 +78,44 @@ def writeNewPrefsFile(preferences_window):
      latitude_pattern = re.compile(r"^-?(90(\.0{1,6})?|[1-8]?\d(\.\d{1,6})?)$")
      longitude_pattern = re.compile(r"^-?(180(\.0{1,6})?|1[0-7]\d(\.\d{1,6})?|[1-9]?\d(\.\d{1,6})?)$")
      if not latitude_pattern.match(str(latitude)) and longitude_pattern.match(str(longitude)):
-          loader = QUiLoader()
-          error_ui_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ui files", "ErrorLatLon.ui")
-          error_window = loader.load(error_ui_path, None)
-          error_window.OKbutton.clicked.connect(error_window.close)
-          error_window.show()
-          loop = QEventLoop()
-          loop.exec()
+          error("ErrorLatLon.ui")
           return
 
      newSources = []
+     pattern = re.compile(
+          r'^(https?:\/\/)'        # http:// or https://
+          r'(\w+\.)?'              # optional subdomain
+          r'[a-zA-Z0-9-]{2,63}'    # domain name
+          r'\.[a-zA-Z]{2,6}'       # top-level domain
+          r'(:\d{1,5})?'           # optional port
+          r'(\/\S*)?'              # optional path
+          r'(\?\S*)?$'             # optional query parameters
+     )
      try:
           model = preferences_window.TLElist.model()
           for row in range(model.rowCount()):
                item = model.item(row)
-               newSources.append(item)
+               if re.match(pattern, item.text()):
+                    newSources.append(item.text())
+               else:
+                    error("ErrorSource_1orMore.ui")
+                    return
      except(AttributeError):
           print("Warning: source table is empty")
 
      newUpdate = [preferences_window.TLEupdatePeriod.value(), preferences_window.TLEupdateUnit.currentText()]
+     
      newIDs = []
+     pattern = re.compile(r'^\d{5}$')
      try:
           model = preferences_window.SatelliteList.model()
           for row in range(model.rowCount()):
                item = model.item(row)
-               newIDs.append(int(item))
+               if re.match(pattern, item.text()):
+                    newIDs.append(item.text())
+               else:
+                    error("ErrorID_1orMore.ui")
+                    return
      except(AttributeError):
           print("Warning: ID table is empty")
 
@@ -99,6 +129,7 @@ def writeNewPrefsFile(preferences_window):
      }
      with open("prefs.json", "w") as f:
           json.dump(newConfig, f, indent=4)
+
 def addSource(preferences_window):
      pattern = re.compile(
           r'^(https?:\/\/)'        # http:// or https://
@@ -118,14 +149,58 @@ def addSource(preferences_window):
                preferences_window.TLElist.setModel(model)
           model.appendRow(item)
      else:
-          loader = QUiLoader()
-          error_ui_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ui files", "ErrorSource.ui")
-          error_window = loader.load(error_ui_path, None)
-          error_window.OKbutton.clicked.connect(error_window.close)
-          error_window.show()
-          loop = QEventLoop()
-          loop.exec()
+          error("ErrorSource.ui")
           return  
+def deleteSource(preferences_window):
+     selection_model = preferences_window.TLElist.selectionModel()
+     selected_indexes = selection_model.selectedIndexes()
+     if selected_indexes:
+          selected_index = selected_indexes[0]
+          model = preferences_window.TLElist.model()
+          model.removeRow(selected_index.row())
+
+def addSat(preferences_window):
+     pattern = re.compile(r'^\d{5}$')
+     source = str(preferences_window.SatelliteIDbox.text())
+     if re.match(pattern, source):
+          item = QStandardItem(str(source))
+          model = preferences_window.SatelliteList.model()
+          if model is None:
+               model = QStandardItemModel(preferences_window.SatelliteList)
+               preferences_window.SatelliteList.setModel(model)
+          model.appendRow(item)
+     else:
+          loader = QUiLoader()
+          error("ErrorID.ui")
+          return
+def deleteSat(preferences_window):
+     selection_model = preferences_window.SatelliteList.selectionModel()
+     selected_indexes = selection_model.selectedIndexes()
+     if selected_indexes:
+          selected_index = selected_indexes[0]
+          model = preferences_window.SatelliteList.model()
+          model.removeRow(selected_index.row())
+
+class read:
+     try:
+          with open("prefs.json", "r") as f:
+               config = json.load(f)
+               location = config["location"]
+               TLEsources = config["tle_sources"]
+               TLEupdate = config["tle_update"]
+               SatIDs = config["satellite_ids"]
+     except:
+          writeDefPrefsFile()
+          with open("prefs.json", "r") as f:
+               config = json.load(f)
+          location = config["location"]
+          TLEsources = config["tle_sources"]
+          TLEupdate = config["tle_update"]
+          SatIDs = config["satellite_ids"]
+          error("ErrorRead.ui")
+
+     lattitude, longitude = location
+     period, unit = TLEupdate
 
 class main(QMainWindow):
      def __init__(self):
@@ -160,21 +235,10 @@ class main(QMainWindow):
      def cancelPrefs(self, confirm_window):
           confirm_window.close()
      def open_preferences(self):
-          try:
-               with open("prefs.json", "r") as f:
-                    config = json.load(f)
-               location = config["location"]
-               TLEsources = config["tle_sources"]
-               TLEupdate = config["tle_update"]
-               SatIDs = config["satellite_ids"]
-          except FileNotFoundError:
-               writeDefPrefsFile()
-               with open("prefs.json", "r") as f:
-                    config = json.load(f)
-               location = config["location"]
-               TLEsources = config["tle_sources"]
-               TLEupdate = config["tle_update"]
-               SatIDs = config["satellite_ids"]
+          location = read.location
+          TLEsources = read.TLEsources
+          TLEupdate = read.TLEupdate
+          SatIDs = read.SatIDs
           lattitude, longitude = location
           period, unit = TLEupdate
 
@@ -202,8 +266,13 @@ class main(QMainWindow):
           preferences_window.SaveButton_2.clicked.connect(lambda: self.savePrefs(preferences_window))
           preferences_window.CancelButton.clicked.connect(lambda: self.cancelPrefs(preferences_window))
           preferences_window.RestoreDefButton.clicked.connect(self.restoreDefaults)
+          
           preferences_window.TLEadd.clicked.connect(lambda: addSource(preferences_window))
-
+          preferences_window.TLEremove.clicked.connect(lambda: deleteSource(preferences_window))
+          
+          preferences_window.SatelliteAdd.clicked.connect(lambda: addSat(preferences_window))
+          preferences_window.SatelliteRemove.clicked.connect(lambda: deleteSat(preferences_window))
+          
           preferences_window.show()
           loop = QEventLoop()
           loop.exec()
