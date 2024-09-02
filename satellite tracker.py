@@ -8,6 +8,7 @@ import os
 import json
 import re
 import geocoder
+import requests
 
 def error(path):
      if not QApplication.instance():
@@ -202,62 +203,74 @@ class read:
 
      lattitude, longitude = location
      period, unit = TLEupdate
+
+def fetchTLEs():
+     urls = read.TLEsources
+     unique_tles = set()
+     for url in urls:
+          response = requests.get(url)
+          status = response.status_code
+          if status == 200:
+               lines = response.text.splitlines()
+               for i in range(0, len(lines), 3):
+                    if i+2 <= len(lines):
+                         tle_set = "\n".join(lines[i:i+3])
+                         unique_tles.add(tle_set)
+               with open('AllTLEs.txt', 'w', encoding='utf-8') as file:
+                    for tle in unique_tles:
+                         file.write(tle + "\n")
+          else: 
+               loader = QUiLoader()
+               error_ui_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ui files", "errors", "ErrorBrokenTle")
+               error_window = loader.load(error_ui_path, None)
+               error_window.label.text(f"One or more broken TLE sources. The link may be typed incorrectly or the website may be down.\nError code: {status}\nBroken link: {url}")
+               error_window.OKbutton.clicked.connect(error_window.close)
+               error_window.show()
+               loop = QEventLoop()
+               loop.exec()
+
 class geolocate:
      g = geocoder.ip('me')
      if g.ok:
           latitude = g.latlng[0] if g.latlng else None
           longitude = g.latlng[1] if g.latlng else None
-          accuracy = g.accuracy  # Accuracy in meters (may not always be available)
+          accuracy = g.accuracy
 
-     def _get_location_windows(self):
-          import asyncio
-          from winrt.windows.devices.geolocation import Geolocator, PositionAccuracy
+class Worker(QThread):
+     def __init__(self, sat_id):
+          super().__init__()
+          self.sat_id = sat_id
 
-          async def get_location():
-               geolocator = Geolocator()
-               geolocator.desired_accuracy = PositionAccuracy.HIGH
-               pos = await geolocator.get_geoposition_async()
-
-               self.lat = pos.coordinate.point.position.latitude
-               self.lon = pos.coordinate.point.position.longitude
-               self.accuracy = pos.coordinate.accuracy
-          asyncio.run(get_location())
-
-     def get_coordinates(self):
-          print("Geolocation accuracy is within "+ self.accuracy +" meters.")
-          return self.lat, self.lon
+     def run(self):
+          print(f"Processing satellite ID: {self.sat_id}")
+          
 class main(QMainWindow):
      def __init__(self):
           super(main, self).__init__()
           loader = QUiLoader()
+
           ui_file_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ui files", "SatelliteTracker.ui")
           self.ui = loader.load(ui_file_path, None)
           self.setCentralWidget(self.ui)
+          
           self.ui.actionPreferences.triggered.connect(self.open_preferences)
           self.ui.actionRadio.triggered.connect(self.open_radio)
           self.ui.actionRotator.triggered.connect(self.open_rotator)
-          #timer1 = QTimer(self)
-          #timer1.timeout.connect(self.update_sat_info)
-          #timer1.start(200)
 
-     def confirmYes(self, confirm_window):
-          writeDefPrefsFile()
-          confirm_window.close()
-     def confirmNo(self, confirm_window):
-          confirm_window.close()
+          self.threads = []
+          if read.SatIDs != []:
+               self.create_threads([str(id) for id in read.SatIDs])
+
      def restoreDefaults(self):
           loader = QUiLoader()
           confirm_ui_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ui files", "ConfirmChoice.ui")
           confirm_window = loader.load(confirm_ui_path, None)
-          confirm_window.YesButton.clicked.connect(lambda: self.confirmYes(confirm_window))
-          confirm_window.NoButton.clicked.connect(lambda: self.confirmNo(confirm_window))
+          confirm_window.YesButton.clicked.connect(lambda: writeDefPrefsFile())
+          confirm_window.YesButton.clicked.connect(lambda: confirm_window.close())
+          confirm_window.NoButton.clicked.connect(lambda: confirm_window.close())
           confirm_window.show()
           loop = QEventLoop()
           loop.exec()
-     def savePrefs(self, preferences_window):
-          writeNewPrefsFile(preferences_window)
-     def cancelPrefs(self, confirm_window):
-          confirm_window.close()
      def open_preferences(self):
           location = read.location
           TLEsources = read.TLEsources
@@ -287,8 +300,10 @@ class main(QMainWindow):
                     item = QStandardItem(str(SatIDs[i]))
                     model.appendRow(item)
 
-          preferences_window.SaveButton_2.clicked.connect(lambda: self.savePrefs(preferences_window))
-          preferences_window.CancelButton.clicked.connect(lambda: self.cancelPrefs(preferences_window))
+
+          preferences_window.SaveButton_2.clicked.connect(lambda: self.updateThreads(preferences_window))
+          preferences_window.SaveButton_2.clicked.connect(lambda: writeNewPrefsFile(preferences_window))
+          preferences_window.CancelButton.clicked.connect(lambda: preferences_window.close())
           preferences_window.RestoreDefButton.clicked.connect(self.restoreDefaults)
           preferences_window.GeolocateButton.clicked.connect(lambda: (preferences_window.LatInputBox.setText(str(geolocate.latitude))))
           preferences_window.GeolocateButton.clicked.connect(lambda: (preferences_window.LonInputBox.setText(str(geolocate.longitude))))
@@ -337,6 +352,26 @@ class main(QMainWindow):
           rotator_window.show()
           loop = QEventLoop()
           loop.exec()
+
+     def updateThreads (self, preferences_window):
+          newIDs = []
+          try:
+               model = preferences_window.SatelliteList.model()
+               for row in range(model.rowCount()):
+                    item = model.item(row)
+                    newIDs.append(item.text())
+               if newIDs != str(read.SatIDs):
+                    pattern = re.compile(r'^\d{5}$')
+                    if re.match(pattern, item.text()):
+                         self.create_threads(newIDs)
+          except(AttributeError):
+               return
+
+     def create_threads(self, SatIDs):
+        for sat_id in SatIDs:
+            worker = Worker(sat_id)
+            worker.start()
+            self.threads.append(worker)
 
 if __name__ == "__main__":
      QtCore.QCoreApplication.setAttribute(QtCore.Qt.AA_ShareOpenGLContexts)
