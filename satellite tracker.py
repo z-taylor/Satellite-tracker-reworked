@@ -205,8 +205,10 @@ class read:
      period, unit = TLEupdate
 
 def fetchTLEs():
+     print("Updating TLEs.....")
      urls = read.TLEsources
      unique_tles = set()
+     target_norad_ids = read.SatIDs
      for url in urls:
           response = requests.get(url)
           status = response.status_code
@@ -228,7 +230,32 @@ def fetchTLEs():
                error_window.show()
                loop = QEventLoop()
                loop.exec()
-
+               return
+     print("TLE update finished")
+def updateUsedTLEs():
+     print("Updating active satellites list.....")
+     target_norad_ids = read.SatIDs
+     with open('AllTLEs.txt', 'r', encoding='utf-8') as file:
+          all_tles = file.readlines()
+     matching_tles = []
+     for i in range(0, len(all_tles), 3):
+          if i + 2 < len(all_tles):
+               tle_lines = all_tles[i:i + 3]
+               line2 = tle_lines[1].strip()
+               try:
+                    norad_id_part = line2[2:8].strip()
+                    if len(norad_id_part) == 6 and norad_id_part[-1] == 'U':
+                         norad_id_str = norad_id_part[:-1]
+                         if norad_id_str.isdigit():
+                              norad_id = norad_id_str
+                              if norad_id in target_norad_ids:
+                                   matching_tles.append("".join(tle_lines))
+               except (ValueError, IndexError) as e:
+                    print(f"Error processing TLE starting with: {tle_lines[0].strip()}")
+                    print(f"Exception: {e}")
+     with open('UsedTLEs.txt', 'w', encoding='utf-8') as file:
+          file.writelines(matching_tles)
+     print("Finished updating active satellite list")
 class geolocate:
      g = geocoder.ip('me')
      if g.ok:
@@ -256,6 +283,8 @@ class main(QMainWindow):
           self.ui.actionPreferences.triggered.connect(self.open_preferences)
           self.ui.actionRadio.triggered.connect(self.open_radio)
           self.ui.actionRotator.triggered.connect(self.open_rotator)
+          self.ui.actionManual_TLE_update.triggered.connect(fetchTLEs)
+          self.ui.actionManual_TLE_update.triggered.connect(updateUsedTLEs)
 
           self.threads = []
           if read.SatIDs != []:
