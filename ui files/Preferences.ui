@@ -69,13 +69,6 @@
          </property>
         </spacer>
        </item>
-       <item row="4" column="1">
-        <widget class="QPushButton" name="LoadButton">
-         <property name="text">
-          <string>Load from file</string>
-         </property>
-        </widget>
-       </item>
        <item row="0" column="0" colspan="3">
         <widget class="QLabel" name="CurrentLatLon">
          <property name="sizePolicy">
@@ -98,13 +91,6 @@
          </property>
          <property name="placeholderText">
           <string>Input longitude here</string>
-         </property>
-        </widget>
-       </item>
-       <item row="3" column="1">
-        <widget class="QPushButton" name="SaveButton">
-         <property name="text">
-          <string>Save to file</string>
          </property>
         </widget>
        </item>
@@ -141,6 +127,13 @@
          </property>
          <property name="alignment">
           <set>Qt::AlignmentFlag::AlignCenter</set>
+         </property>
+        </widget>
+       </item>
+       <item row="3" column="1" rowspan="2">
+        <widget class="QPushButton" name="LoadButton">
+         <property name="text">
+          <string>Load from file</string>
          </property>
         </widget>
        </item>
@@ -242,17 +235,10 @@
        <string>Satellites</string>
       </attribute>
       <layout class="QGridLayout" name="gridLayout_4">
-       <item row="2" column="1">
-        <widget class="QPushButton" name="SatelliteRemove">
+       <item row="2" column="0">
+        <widget class="QPushButton" name="SatelliteAdd">
          <property name="text">
-          <string>Delete satellite</string>
-         </property>
-        </widget>
-       </item>
-       <item row="0" column="0">
-        <widget class="QLabel" name="label_5">
-         <property name="text">
-          <string>Tracked satellites:</string>
+          <string>Add satellite</string>
          </property>
         </widget>
        </item>
@@ -263,15 +249,22 @@
          </property>
         </widget>
        </item>
-       <item row="2" column="0">
-        <widget class="QPushButton" name="SatelliteAdd">
+       <item row="0" column="0">
+        <widget class="QLabel" name="label_5">
          <property name="text">
-          <string>Add satellite</string>
+          <string>Tracked satellites:</string>
          </property>
         </widget>
        </item>
        <item row="3" column="0" colspan="2">
         <widget class="QListView" name="SatelliteList"/>
+       </item>
+       <item row="2" column="1">
+        <widget class="QPushButton" name="SatelliteRemove">
+         <property name="text">
+          <string>Delete satellite</string>
+         </property>
+        </widget>
        </item>
       </layout>
      </widget>
