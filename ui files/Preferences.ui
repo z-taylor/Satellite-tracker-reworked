@@ -235,34 +235,48 @@
        <string>Satellites</string>
       </attribute>
       <layout class="QGridLayout" name="gridLayout_4">
-       <item row="2" column="0">
+       <item row="4" column="1">
+        <widget class="QPushButton" name="SatelliteRemove">
+         <property name="text">
+          <string>Delete satellite</string>
+         </property>
+        </widget>
+       </item>
+       <item row="4" column="0">
         <widget class="QPushButton" name="SatelliteAdd">
          <property name="text">
           <string>Add satellite</string>
          </property>
         </widget>
        </item>
-       <item row="1" column="0" colspan="2">
+       <item row="0" column="0">
+        <widget class="QLabel" name="label">
+         <property name="text">
+          <string>Satellite update rate:</string>
+         </property>
+        </widget>
+       </item>
+       <item row="5" column="0" colspan="2">
+        <widget class="QListView" name="SatelliteList"/>
+       </item>
+       <item row="3" column="0" colspan="2">
         <widget class="QLineEdit" name="SatelliteIDbox">
          <property name="placeholderText">
           <string>Type the 5 digit NORAD ID number of the satellites you want to track here</string>
          </property>
         </widget>
        </item>
-       <item row="0" column="0">
+       <item row="1" column="0">
         <widget class="QLabel" name="label_5">
          <property name="text">
           <string>Tracked satellites:</string>
          </property>
         </widget>
        </item>
-       <item row="3" column="0" colspan="2">
-        <widget class="QListView" name="SatelliteList"/>
-       </item>
-       <item row="2" column="1">
-        <widget class="QPushButton" name="SatelliteRemove">
-         <property name="text">
-          <string>Delete satellite</string>
+       <item row="0" column="1">
+        <widget class="QLineEdit" name="lineEdit">
+         <property name="placeholderText">
+          <string>Enter a value in milliseconds</string>
          </property>
         </widget>
        </item>
