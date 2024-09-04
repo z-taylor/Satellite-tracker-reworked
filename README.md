@@ -1,4 +1,5 @@
-How to install: \n
+How to install:
+
 Install python if you do not already have it. While installing, make sure you check the "add to PATH" check box
 Click code > download zip
 Extract the zip file, it does not matter where to.
