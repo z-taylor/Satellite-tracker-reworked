@@ -1,9 +1,9 @@
 import sys
-from PySide6 import QtCore, QtGui, QtWidgets
-from PySide6.QtWidgets import QApplication, QMainWindow, QDialog, QWidget, QDialogButtonBox
+from PySide6 import QtCore
+from PySide6.QtWidgets import QApplication, QMainWindow
 from PySide6.QtUiTools import QUiLoader
-from PySide6.QtCore import QTimer, QThread, QEventLoop, Signal
-from PySide6.QtGui import QStandardItem, QStandardItemModel
+from PySide6.QtCore import QTimer, QThread, QEventLoop, Qt
+from PySide6.QtGui import QStandardItem, QStandardItemModel, QFont, QColor, QBrush
 import os
 import json
 import re
@@ -336,7 +336,8 @@ class Worker(QThread):
           lat=lat.degrees # latitude above earth
           lon=lon.degrees # longitude above earth
           horizon = targetAlt > 0 # false if below horizon true if above
-          self.sat_info[index-1] = [index, name, trackSat, targetAlt, targetAz, horizon, distance, lat, lon]
+          nextEvent = "Next Event" #shows next event, will work on later
+          self.sat_info[index-1] = [name, trackSat, targetAlt, targetAz, horizon, nextEvent, distance, lat, lon]
 
 class main(QMainWindow):
      def __init__(self):
@@ -360,9 +361,17 @@ class main(QMainWindow):
           timer2 = QTimer(self)
           timer2.timeout.connect(lambda: self.tleUpdate(updateUnit))
           timer2.start(1000)
-                    
+          
+          self.tableView = self.ui.tableView
+          headers = [
+               "Satellite name", "Norad ID", "Elevation", "Azimuth",
+               "Above horizon", "Next event", "Distance", "Latitude", "Longitude"
+          ]
+          model = QStandardItemModel()
+          model.setHorizontalHeaderLabels(headers)
+          self.tableView.setModel(model)
           timer1 = QTimer(self)
-          timer1.timeout.connect(lambda: self.update_sat_info())
+          timer1.timeout.connect(lambda: self.update_sat_info(self.tableView, model))
           timer1.start(int(read.UpdateRate))
 
           
@@ -433,6 +442,7 @@ class main(QMainWindow):
                with open("prefs.json", "r") as f:
                     config = json.load(f)
                     read.location = config["location"]
+                    read.latitude, read.longitude = read.location
                     read.TLEsources = config["tle_sources"]
                     read.TLEupdate = config["tle_update"]
                     read.SatIDs = config["satellite_ids"]
@@ -476,9 +486,10 @@ class main(QMainWindow):
 
      def updateTimers(self, preferences_window):
           newUpdate = str(preferences_window.UpdateRate.text())
+          print(newUpdate)
           if newUpdate!=read.UpdateRate:
-               self.timer.stop()
-               self.timer.start(newUpdate)
+               self.timer1.stop()
+               self.timer1.start(newUpdate)
 
      def create_threads(self, SatIDs, latitude, longitude):
           index = 0
@@ -586,17 +597,29 @@ class main(QMainWindow):
                     json.dump(newConfig, f, indent=4)
                fetchTLEs()
                updateUsedTLEs()
-     def update_sat_info(self):
+     def update_sat_info(self, tableView, model):
           self.create_threads(read.SatIDs, read.latitude, read.longitude)
           self.event_loop = QEventLoop()
           QTimer.singleShot(0, self.event_loop.quit)
           self.event_loop.exec()
           while self.sat_info[(len(self.sat_info) - 1)] == []:
                time.sleep(0.01)
-               print("Final thread is not finished. Waiting for completion.....")
-          print(self.sat_info, "\n")
-
-
+          model.removeRows(0, model.rowCount())
+          for row_data in self.sat_info:
+               items = [QStandardItem(str(item)) for item in row_data]
+               model.appendRow(items)
+               for item in items:
+                    item.setFlags(item.flags() & ~Qt.ItemIsEditable)
+          for row in range(model.rowCount()):
+               status_item = model.item(row, 4)
+               if status_item:
+                    is_false = status_item.text().lower() == 'false'
+                    color = QColor("red") if is_false else QColor("green")
+                    for col in range(2, 5):
+                         item = model.item(row, col)
+                         if item:
+                              item.setForeground(QBrush(color))
+          tableView.resizeColumnsToContents()
 
      def increment_threads(self):
           self.finished_threads += 1
