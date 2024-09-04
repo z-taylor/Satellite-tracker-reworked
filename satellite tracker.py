@@ -9,8 +9,6 @@ import json
 import re
 import geocoder
 import requests
-from pyhigh import get_elevation
-from pyproj import Transformer
 from datetime import datetime
 from skyfield.api import load, wgs84
 import time
@@ -130,10 +128,10 @@ def writeNewPrefsFile(preferences_window):
           if float(preferences_window.UpdateRate.text()) > 0:
                newUpdateRate = preferences_window.UpdateRate.text()
           else: 
-               error("ErrorUpdateTooLow")
+               error("ErrorUpdateTooLow.ui")
                return
      else:
-          error("ErrorUpdateNumbersOnly")
+          error("ErrorUpdateNumbersOnly.ui")
           return
      
 
@@ -242,7 +240,7 @@ def fetchTLEs():
                          file.write(tle + "\n")
           else: 
                loader = QUiLoader()
-               error_ui_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ui files", "errors", "ErrorBrokenTle")
+               error_ui_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ui files", "errors", "ErrorBrokenTle.ui")
                error_window = loader.load(error_ui_path, None)
                error_window.label.text(f"One or more broken TLE sources. The link may be typed incorrectly or the website may be down.\nError code: {status}\nBroken link: {url}")
                error_window.OKbutton.clicked.connect(error_window.close)
@@ -284,77 +282,51 @@ class geolocate:
           accuracy = g.accuracy
 
 class Worker(QThread):
-     def __init__(self, sat_id, x, sat_info):
+     def __init__(self, sat_id, x, sat_info, now, satellites, by_number, base, ts):
           super().__init__()
           self.sat_id = sat_id
           self.index = x
           self.sat_info = sat_info
+          self.now = now
+          self.y = self.now.strftime("%Y").lstrip("0")
+          self.mo = self.now.strftime("%m").lstrip("0")
+          self.d = self.now.strftime("%d").lstrip("0")
+          self.h = self.now.strftime("%H").lstrip("0")
+          self.date = int(self.d+self.mo+self.y+self.h)
+          self.satellites = satellites
+          for satellite in satellites:
+               if satellite.model.satnum == int(sat_id):
+                    self.name = satellite.name
+                    break
+               else:
+                    self.name = "Name unavailable"
+          name = self.name
+          self.by_number = by_number
+          self.base = base
+          self.ts = ts
+          try:
+               self.satellite = self.by_number[int(self.sat_id)]
+          except KeyError:
+               updateUsedTLEs()
+               self.__init__(self, sat_id, x, sat_info, name, now, satellites, by_number, base, ts)
 
      def run(self):
-          trackSat = self.sat_id
-          index = self.index
-          name = "name"
-          transformer = Transformer.from_crs(
-          "EPSG:4326",
-          "EPSG:4979",
-          always_xy=True
-     )
-          heightAboveWGS84 = transformer.transform(float(get_elevation(lat=float(read.latitude), lon=float(read.longitude))))
-          if os.path.exists('srtm_data.tif'):
-               os.remove('srtm_data.tif')
-          with open('UsedTLEs.txt', 'r', encoding='utf-8') as file:
-               TLElist = file.readlines()
-          try:
-               with open('UsedTLEs.txt', 'r', encoding='utf-8') as file:
-                    TLElist = file.readlines()
-               for i in range(0, len(TLElist), 3):
-                    if i + 2 < len(TLElist):
-                         tle_lines = TLElist[i:i + 3]
-                         line2 = tle_lines[1].strip()
-                         try:
-                              norad_id_part = line2[2:8].strip()
-                              if len(norad_id_part) == 6 and norad_id_part[-1] == 'U':
-                                   norad_id_str = norad_id_part[:-1]
-                                   if norad_id_str.isdigit():
-                                        norad_id = norad_id_str
-                                        if norad_id == str(trackSat):
-                                             TLE = "".join(tle_lines)
-                                             break
-                         except (ValueError, IndexError) as e:
-                              print(f"Error processing TLE starting with: {tle_lines[0].strip()}")
-                              print(f"Exception: {e}")
-          except FileNotFoundError:
-               fetchTLEs()
-               updateUsedTLEs()
-               self.run()
-          now = datetime.now()
-          y = now.strftime("%Y").lstrip("0")
-          mo = now.strftime("%m").lstrip("0")
-          d = now.strftime("%d").lstrip("0")
-          h = now.strftime("%H").lstrip("0")
-          date=int(d+mo+y+h)
-          satellites = load.tle_file("AllTLEs.txt", reload=True)
-          by_number = {sat.model.satnum: sat for sat in satellites}
-          satellite = by_number[int(trackSat)]
-          base = wgs84.latlon(float(read.latitude), float(read.longitude))
-          ts=load.timescale()
+          trackSat, name, now, y, mo, d, h, date, by_number, base, ts, satellite, index = self.sat_id, self.name, self.now, self.y, self.mo, self.d, self.h, self.date, self.by_number, self.base, self.ts, self.satellite, self.index
           run=True
-          while run==True:
-               t = ts.now()
-               difference = satellite - base
-               topocentric = difference.at(t)
-               alt, az, distance = topocentric.altaz()
-               targetAlt = alt.degrees # elevation in degrees
-               targetAz = az.degrees # azimuth in degrees
-               distance = ('{:.1f} km'.format(distance.km)) # distance in kilometers
-               geocentric = satellite.at(t)
-               lat, lon = wgs84.latlon_of(geocentric)
-               lat=lat.degrees # latitude above earth
-               lon=lon.degrees # longitude above earth
-               horizon = targetAlt > 0 # false if below horizon true if above
-               #print(trackSat, targetAlt, targetAz, horizon)
-               self.sat_info[index-1] = [index, name, trackSat, targetAlt, targetAz, horizon, distance, lat, lon]
-               
+          t = ts.now()
+          difference = satellite - base
+          topocentric = difference.at(t)
+          alt, az, distance = topocentric.altaz()
+          targetAlt = alt.degrees # elevation in degrees
+          targetAz = az.degrees # azimuth in degrees
+          distance = ('{:.1f} km'.format(distance.km)) # distance in kilometers
+          geocentric = satellite.at(t)
+          lat, lon = wgs84.latlon_of(geocentric)
+          lat=lat.degrees # latitude above earth
+          lon=lon.degrees # longitude above earth
+          horizon = targetAlt > 0 # false if below horizon true if above
+          self.sat_info[index-1] = [index, name, trackSat, targetAlt, targetAz, horizon, distance, lat, lon]
+
 class main(QMainWindow):
      def __init__(self):
           super(main, self).__init__()
@@ -371,19 +343,20 @@ class main(QMainWindow):
           self.ui.actionManual_TLE_update.triggered.connect(updateUsedTLEs)
 
           self.threads = []
-          if read.SatIDs != []:
-               self.create_threads([str(id) for id in read.SatIDs])
-          
+          self.event_loop = QEventLoop()
+                    
           timer = QTimer(self)
-          timer.timeout.connect(lambda: self.update_sat_info(self.sat_info))
+          timer.timeout.connect(lambda: self.update_sat_info())
           timer.start(int(read.UpdateRate))
-
-     def restoreDefaults(self):
+          
+     def restoreDefaults(self, preferences_window):
           loader = QUiLoader()
           confirm_ui_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ui files", "ConfirmChoice.ui")
           confirm_window = loader.load(confirm_ui_path, None)
           confirm_window.YesButton.clicked.connect(lambda: writeDefPrefsFile())
           confirm_window.YesButton.clicked.connect(lambda: confirm_window.close())
+          confirm_window.YesButton.clicked.connect(lambda: self.refresh_preferences())
+          confirm_window.YesButton.clicked.connect(lambda: preferences_window.close())
           confirm_window.NoButton.clicked.connect(lambda: confirm_window.close())
           confirm_window.show()
           loop = QEventLoop()
@@ -418,11 +391,11 @@ class main(QMainWindow):
                     model.appendRow(item)
 
 
-          preferences_window.SaveButton_2.clicked.connect(lambda: self.updateThreads(preferences_window))
           preferences_window.SaveButton_2.clicked.connect(lambda: self.updateTimers(preferences_window))
           preferences_window.SaveButton_2.clicked.connect(lambda: writeNewPrefsFile(preferences_window))
+          preferences_window.SaveButton_2.clicked.connect(lambda: self.refresh_preferences())
           preferences_window.CancelButton.clicked.connect(lambda: preferences_window.close())
-          preferences_window.RestoreDefButton.clicked.connect(self.restoreDefaults)
+          preferences_window.RestoreDefButton.clicked.connect(lambda: self.restoreDefaults(preferences_window))
           preferences_window.GeolocateButton.clicked.connect(lambda: (preferences_window.LatInputBox.setText(str(geolocate.latitude))))
           preferences_window.GeolocateButton.clicked.connect(lambda: (preferences_window.LonInputBox.setText(str(geolocate.longitude))))
           preferences_window.GeolocateButton.clicked.connect(lambda: (print(f"Accuracy is within {geolocate.accuracy} meters." if geolocate.accuracy else "Accuracy estimate not available")))
@@ -438,6 +411,19 @@ class main(QMainWindow):
           preferences_window.show()
           loop = QEventLoop()
           loop.exec()
+     def refresh_preferences(self):
+          try:
+               with open("prefs.json", "r") as f:
+                    config = json.load(f)
+                    read.location = config["location"]
+                    read.TLEsources = config["tle_sources"]
+                    read.TLEupdate = config["tle_update"]
+                    read.SatIDs = config["satellite_ids"]
+                    read.UpdateRate = config["update_rate"]
+          except FileNotFoundError:
+               writeDefPrefsFile()
+               self.refresh_preferences()
+
 
      def radSave(self):
           print("save")
@@ -471,39 +457,50 @@ class main(QMainWindow):
           loop = QEventLoop()
           loop.exec()
 
-     def updateThreads (self, preferences_window):
-          newIDs = []
-          try:
-               model = preferences_window.SatelliteList.model()
-               for row in range(model.rowCount()):
-                    item = model.item(row)
-                    newIDs.append(item.text())
-               if newIDs != str(read.SatIDs):
-                    pattern = re.compile(r'^\d{5}$')
-                    if re.match(pattern, item.text()):
-                         self.create_threads(newIDs)
-                         updateUsedTLEs()
-          except(AttributeError):
-               return
      def updateTimers(self, preferences_window):
           newUpdate = str(preferences_window.UpdateRate.text())
           if newUpdate!=read.UpdateRate:
                self.timer.stop()
                self.timer.start(newUpdate)
 
-     def create_threads(self, SatIDs):
+     def create_threads(self, SatIDs, latitude, longitude):
           index = 0
           sat_info = []
           self.sat_info = sat_info
+          self.total_threads = 0
+          self.finished_threads = 0
           for sat_id in SatIDs:
                index+=1
+               self.total_threads+=1
                sat_info.append([])
-               worker = Worker(sat_id, index, sat_info)
+               name = "name"
+               now = datetime.now()
+               satellites = load.tle_file("UsedTLEs.txt", reload=True)
+               by_number = {sat.model.satnum: sat for sat in satellites}
+               base = wgs84.latlon(float(latitude), float(longitude))
+               ts = load.timescale()
+               worker = Worker(sat_id, index, sat_info, now, satellites, by_number, base, ts)
                worker.start()
+               worker.finished.connect(lambda: self.increment_threads())
                self.threads.append(worker)
 
-     def update_sat_info(self, sat_info):
-          print(sat_info, "update")
+     def update_sat_info(self):
+          self.create_threads(read.SatIDs, read.latitude, read.longitude)
+          self.event_loop = QEventLoop()
+          QTimer.singleShot(0, self.event_loop.quit)
+          self.event_loop.exec()
+          while self.sat_info[(len(self.sat_info) - 1)] == []:
+               time.sleep(0.0001)
+               print("Final thread is not finished. Waiting for completion.....")
+          print(self.sat_info, "\n")
+
+
+
+     def increment_threads(self):
+          self.finished_threads += 1
+          if self.finished_threads+1 == self.total_threads:
+               self.event_loop.quit()
+
 if __name__ == "__main__":
      QtCore.QCoreApplication.setAttribute(QtCore.Qt.AA_ShareOpenGLContexts)
      app=QApplication(sys.argv)
