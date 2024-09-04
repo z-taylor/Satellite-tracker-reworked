@@ -374,16 +374,21 @@ class main(QMainWindow):
           timer1.timeout.connect(lambda: self.update_sat_info(self.tableView, model))
           timer1.start(int(read.UpdateRate))
 
+          self.windows = []
           
      def restoreDefaults(self, preferences_window):
           loader = QUiLoader()
           confirm_ui_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ui files", "ConfirmChoice.ui")
           confirm_window = loader.load(confirm_ui_path, None)
+          self.windows.append(confirm_window)
           confirm_window.YesButton.clicked.connect(lambda: writeDefPrefsFile())
           confirm_window.YesButton.clicked.connect(lambda: confirm_window.close())
+          confirm_window.YesButton.clicked.connect(lambda: self.windows.remove(confirm_window))
           confirm_window.YesButton.clicked.connect(lambda: self.refresh_preferences())
           confirm_window.YesButton.clicked.connect(lambda: preferences_window.close())
+          confirm_window.YesButton.clicked.connect(lambda: self.windows.remove(preferences_window))
           confirm_window.NoButton.clicked.connect(lambda: confirm_window.close())
+          confirm_window.NoButton.clicked.connect(lambda: self.windows.remove(confirm_window))
           confirm_window.show()
           loop = QEventLoop()
           loop.exec()
@@ -398,7 +403,7 @@ class main(QMainWindow):
           loader = QUiLoader()
           preferences_ui_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ui files", "Preferences.ui")
           preferences_window = loader.load(preferences_ui_path, None)
-          
+          self.windows.append(preferences_window)
           preferences_window.LatInputBox.setText(str(latitude))
           preferences_window.LonInputBox.setText(str(longitude))
           preferences_window.TLEupdatePeriod.setValue(period)
@@ -421,6 +426,7 @@ class main(QMainWindow):
           preferences_window.SaveButton_2.clicked.connect(lambda: writeNewPrefsFile(preferences_window))
           preferences_window.SaveButton_2.clicked.connect(lambda: self.refresh_preferences())
           preferences_window.CancelButton.clicked.connect(lambda: preferences_window.close())
+          preferences_window.CancelButton.clicked.connect(lambda: self.windows.remove(preferences_window))
           preferences_window.RestoreDefButton.clicked.connect(lambda: self.restoreDefaults(preferences_window))
           preferences_window.GeolocateButton.clicked.connect(lambda: (preferences_window.LatInputBox.setText(str(geolocate.latitude))))
           preferences_window.GeolocateButton.clicked.connect(lambda: (preferences_window.LonInputBox.setText(str(geolocate.longitude))))
@@ -464,6 +470,7 @@ class main(QMainWindow):
           radio_window = loader.load(radio_ui_path, None)
           radio_window.saveButton.clicked.connect(self.radSave)
           radio_window.connectButton.clicked.connect(self.radConnect)
+          self.windows.append(radio_window)
           radio_window.show()
           loop = QEventLoop()
           loop.exec()
@@ -480,6 +487,7 @@ class main(QMainWindow):
           rotator_window = loader.load(rotator_ui_path, None)
           rotator_window.saveButton.clicked.connect(self.rotSave)
           rotator_window.connectButton.clicked.connect(self.rotConnect)
+          self.windows.append(rotator_window)
           rotator_window.show()
           loop = QEventLoop()
           loop.exec()
@@ -624,6 +632,10 @@ class main(QMainWindow):
           self.finished_threads += 1
           if self.finished_threads+1 == self.total_threads:
                self.event_loop.quit()
+
+     def closeEvent(self, event):
+          for window in self.windows:
+               window.close()
 
 if __name__ == "__main__":
      QtCore.QCoreApplication.setAttribute(QtCore.Qt.AA_ShareOpenGLContexts)
