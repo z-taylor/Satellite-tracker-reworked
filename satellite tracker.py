@@ -10,6 +10,7 @@ import re
 import geocoder
 import requests
 from datetime import datetime
+from dateutil.relativedelta import relativedelta
 from skyfield.api import load, wgs84
 import time
 
@@ -35,6 +36,7 @@ def writeDefPrefsFile():
           "tle_update" : [
                24, "Hours"
           ],
+          "last_tle_update" : "2024-09-03 12:00:00",
           "satellite_ids": [
                "25338", "28654", "33591", "40069", "44387", "57166", "59051", "41866", "51850"
           ],
@@ -70,12 +72,14 @@ def writeNewPrefsFile(preferences_window):
      try:
           with open("prefs.json", "r") as f:
                config = json.load(f)
+          newlastTLEupdate = config["last_tle_update"]
           newRadConfig = config["radio_config"]
           newRotConfig = config["rotator_config"]
      except FileNotFoundError:
           writeDefPrefsFile()
           with open("prefs.json", "r") as f:
                config = json.load(f)
+          newlastTLEupdate = config["last_tle_update"]
           newRadConfig = config["radio_config"]
           newRotConfig = config["rotator_config"]
 
@@ -141,6 +145,7 @@ def writeNewPrefsFile(preferences_window):
           "tle_update" : newUpdate,
           "satellite_ids": newIDs,
           "update_rate" : newUpdateRate,
+          "last_tle_update" : newlastTLEupdate,
           "radio_config": newRadConfig,
           "rotator_config": newRotConfig
      }
@@ -205,8 +210,11 @@ class read:
                location = config["location"]
                TLEsources = config["tle_sources"]
                TLEupdate = config["tle_update"]
+               lastTLEupdate = config["last_tle_update"]
                SatIDs = config["satellite_ids"]
                UpdateRate = config["update_rate"]
+               RadConfig = UpdateRate = config["radio_config"]
+               RotConfig = UpdateRate = config["rotator_config"]
      except:
           writeDefPrefsFile()
           with open("prefs.json", "r") as f:
@@ -214,8 +222,11 @@ class read:
           location = config["location"]
           TLEsources = config["tle_sources"]
           TLEupdate = config["tle_update"]
+          lastTLEupdate = config["last_tle_update"]
           SatIDs = config["satellite_ids"]
           UpdateRate = config["update_rate"]
+          RadConfig = UpdateRate = config["radio_config"]
+          RotConfig = UpdateRate = config["rotator_config"]
           error("ErrorRead.ui")
 
      latitude, longitude = location
@@ -344,10 +355,16 @@ class main(QMainWindow):
 
           self.threads = []
           self.event_loop = QEventLoop()
+
+          updateUnit = read.unit
+          timer2 = QTimer(self)
+          timer2.timeout.connect(lambda: self.tleUpdate(updateUnit))
+          timer2.start(1000)
                     
-          timer = QTimer(self)
-          timer.timeout.connect(lambda: self.update_sat_info())
-          timer.start(int(read.UpdateRate))
+          timer1 = QTimer(self)
+          timer1.timeout.connect(lambda: self.update_sat_info())
+          timer1.start(int(read.UpdateRate))
+
           
      def restoreDefaults(self, preferences_window):
           loader = QUiLoader()
@@ -488,6 +505,87 @@ class main(QMainWindow):
                worker.finished.connect(lambda: self.increment_threads())
                self.threads.append(worker)
 
+     def tleUpdate(self, updateUnit):
+          run = True
+          date1 = read.lastTLEupdate
+          if isinstance(read.lastTLEupdate, str):
+               date1 = datetime.strptime(date1, "%Y-%m-%d %H:%M:%S")
+          date2 = datetime(int(datetime.now().strftime("%Y").lstrip("0")), int(datetime.now().strftime("%m").lstrip("0")), int(datetime.now().strftime("%d").lstrip("0")), int(datetime.now().strftime("%H").lstrip("0")))
+          difference = relativedelta(date2, date1)
+          differenceMonths = difference.months
+          differenceWeeks = difference.days // 7
+          differenceDays = difference.days
+          differenceHours = difference.hours
+          differenceWeeks += (differenceMonths * (365/12/7)) if differenceMonths > 0 else 0
+          differenceDays += (differenceWeeks * 7) if differenceWeeks > 0 else 0
+          differenceHours += (differenceDays * 24) if differenceDays > 0 else 0
+          if updateUnit == "Months" and differenceMonths >= read.period and run == True:
+               read.lastTLEupdate = date2
+               newConfig = {
+                    "location": read.location,
+                    "tle_sources": read.TLEsources,
+                    "tle_update" : read.TLEupdate,
+                    "satellite_ids": read.SatIDs,
+                    "update_rate" : read.UpdateRate,
+                    "last_tle_update" : date2,
+                    "radio_config": read.RadConfig,
+                    "rotator_config": read.RotConfig
+               }
+               with open("prefs.json", "w") as f:
+                    json.dump(newConfig, f, indent=4)
+               fetchTLEs()
+               updateUsedTLEs()
+               run = False
+          if updateUnit == "Weeks" and differenceWeeks >= read.period and run == True:
+               read.lastTLEupdate = date2
+               newConfig = {
+                    "location": read.location,
+                    "tle_sources": read.TLEsources,
+                    "tle_update" : read.TLEupdate,
+                    "satellite_ids": read.SatIDs,
+                    "update_rate" : read.UpdateRate,
+                    "last_tle_update" : date2,
+                    "radio_config": read.RadConfig,
+                    "rotator_config": read.RotConfig
+               }
+               with open("prefs.json", "w") as f:
+                    json.dump(newConfig, f, indent=4)
+               fetchTLEs()
+               updateUsedTLEs()
+               run = False
+          if updateUnit == "Days" and differenceDays >= read.period and run == True:
+               read.lastTLEupdate = date2
+               newConfig = {
+                    "location": read.location,
+                    "tle_sources": read.TLEsources,
+                    "tle_update" : read.TLEupdate,
+                    "satellite_ids": read.SatIDs,
+                    "update_rate" : read.UpdateRate,
+                    "last_tle_update" : date2,
+                    "radio_config": read.RadConfig,
+                    "rotator_config": read.RotConfig
+               }
+               with open("prefs.json", "w") as f:
+                    json.dump(newConfig, f, indent=4)
+               fetchTLEs()
+               updateUsedTLEs()
+               run = False
+          if updateUnit == "Hours" and differenceHours >= read.period and run == True:
+               read.lastTLEupdate = date2
+               newConfig = {
+                    "location": read.location,
+                    "tle_sources": read.TLEsources,
+                    "tle_update" : read.TLEupdate,
+                    "satellite_ids": read.SatIDs,
+                    "update_rate" : read.UpdateRate,
+                    "last_tle_update" : date2,
+                    "radio_config": read.RadConfig,
+                    "rotator_config": read.RotConfig
+               }
+               with open("prefs.json", "w") as f:
+                    json.dump(newConfig, f, indent=4)
+               fetchTLEs()
+               updateUsedTLEs()
      def update_sat_info(self):
           self.create_threads(read.SatIDs, read.latitude, read.longitude)
           self.event_loop = QEventLoop()
@@ -511,4 +609,3 @@ if __name__ == "__main__":
      window=main()
      window.show()
      sys.exit(app.exec())
-     
