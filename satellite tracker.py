@@ -486,7 +486,6 @@ class main(QMainWindow):
 
      def updateTimers(self, preferences_window):
           newUpdate = str(preferences_window.UpdateRate.text())
-          print(newUpdate)
           if newUpdate!=read.UpdateRate:
                self.timer1.stop()
                self.timer1.start(newUpdate)
