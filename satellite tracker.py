@@ -213,8 +213,8 @@ class read:
                lastTLEupdate = config["last_tle_update"]
                SatIDs = config["satellite_ids"]
                UpdateRate = config["update_rate"]
-               RadConfig = UpdateRate = config["radio_config"]
-               RotConfig = UpdateRate = config["rotator_config"]
+               RadConfig = config["radio_config"]
+               RotConfig = config["rotator_config"]
      except:
           writeDefPrefsFile()
           with open("prefs.json", "r") as f:
@@ -225,8 +225,8 @@ class read:
           lastTLEupdate = config["last_tle_update"]
           SatIDs = config["satellite_ids"]
           UpdateRate = config["update_rate"]
-          RadConfig = UpdateRate = config["radio_config"]
-          RotConfig = UpdateRate = config["rotator_config"]
+          RadConfig = config["radio_config"]
+          RotConfig = config["rotator_config"]
           error("ErrorRead.ui")
 
      latitude, longitude = location
@@ -578,7 +578,7 @@ class main(QMainWindow):
                     "tle_update" : read.TLEupdate,
                     "satellite_ids": read.SatIDs,
                     "update_rate" : read.UpdateRate,
-                    "last_tle_update" : date2,
+                    "last_tle_update" : str(date2),
                     "radio_config": read.RadConfig,
                     "rotator_config": read.RotConfig
                }
