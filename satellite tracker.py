@@ -475,7 +475,11 @@ class main(QMainWindow):
                sat_info.append([])
                name = "name"
                now = datetime.now()
-               satellites = load.tle_file("UsedTLEs.txt", reload=True)
+               try:
+                    satellites = load.tle_file("UsedTLEs.txt", reload=True)
+               except:
+                    fetchTLEs()
+                    updateUsedTLEs()
                by_number = {sat.model.satnum: sat for sat in satellites}
                base = wgs84.latlon(float(latitude), float(longitude))
                ts = load.timescale()
@@ -490,7 +494,7 @@ class main(QMainWindow):
           QTimer.singleShot(0, self.event_loop.quit)
           self.event_loop.exec()
           while self.sat_info[(len(self.sat_info) - 1)] == []:
-               time.sleep(0.0001)
+               time.sleep(0.01)
                print("Final thread is not finished. Waiting for completion.....")
           print(self.sat_info, "\n")
 
