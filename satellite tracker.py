@@ -14,13 +14,15 @@ from dateutil.relativedelta import relativedelta
 from skyfield.api import load, wgs84
 import time
 
-def error(path):
+def error(self, path):
      if not QApplication.instance():
          app = QApplication(sys.argv)
      loader = QUiLoader()
      error_ui_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ui files", "errors", path)
      error_window = loader.load(error_ui_path, None)
+     self.windows.append(error_window)
      error_window.OKbutton.clicked.connect(error_window.close)
+     error_window.OKbutton.clicked.connect(lambda: self.windows.remove(error_window))
      error_window.show()
      loop = QEventLoop()
      loop.exec()
@@ -68,7 +70,7 @@ def writeDefPrefsFile():
      }
      with open("prefs.json", "w") as f:
           json.dump(defaultConfig, f, indent=4)
-def writeNewPrefsFile(preferences_window):
+def writeNewPrefsFile(self, preferences_window):
      try:
           with open("prefs.json", "r") as f:
                config = json.load(f)
@@ -88,7 +90,7 @@ def writeNewPrefsFile(preferences_window):
      latitude_pattern = re.compile(r"^-?(90(\.0{1,6})?|[1-8]?\d(\.\d{1,6})?)$")
      longitude_pattern = re.compile(r"^-?(180(\.0{1,6})?|1[0-7]\d(\.\d{1,6})?|[1-9]?\d(\.\d{1,6})?)$")
      if not latitude_pattern.match(str(latitude)) and longitude_pattern.match(str(longitude)):
-          error("ErrorLatLon.ui")
+          error(self, "ErrorLatLon.ui")
           return
 
      newSources = []
@@ -108,7 +110,7 @@ def writeNewPrefsFile(preferences_window):
                if re.match(pattern, item.text()):
                     newSources.append(item.text())
                else:
-                    error("ErrorSource_1orMore.ui")
+                    error(self, "ErrorSource_1orMore.ui")
                     return
      except(AttributeError):
           print("Warning: source table is empty")
@@ -124,7 +126,7 @@ def writeNewPrefsFile(preferences_window):
                if re.match(pattern, item.text()):
                     newIDs.append(item.text())
                else:
-                    error("ErrorID_1orMore.ui")
+                    error(self, "ErrorID_1orMore.ui")
                     return
      except(AttributeError):
           print("Warning: ID table is empty")
@@ -132,10 +134,10 @@ def writeNewPrefsFile(preferences_window):
           if float(preferences_window.UpdateRate.text()) > 0:
                newUpdateRate = preferences_window.UpdateRate.text()
           else: 
-               error("ErrorUpdateTooLow.ui")
+               error(self, "ErrorUpdateTooLow.ui")
                return
      else:
-          error("ErrorUpdateNumbersOnly.ui")
+          error(self, "ErrorUpdateNumbersOnly.ui")
           return
      
 
@@ -152,7 +154,7 @@ def writeNewPrefsFile(preferences_window):
      with open("prefs.json", "w") as f:
           json.dump(newConfig, f, indent=4)
 
-def addSource(preferences_window):
+def addSource(self, preferences_window):
      pattern = re.compile(
           r'^(https?:\/\/)'        # http:// or https://
           r'(\w+\.)?'              # optional subdomain
@@ -171,7 +173,7 @@ def addSource(preferences_window):
                preferences_window.TLElist.setModel(model)
           model.appendRow(item)
      else:
-          error("ErrorSource.ui")
+          error(self, "ErrorSource.ui")
           return  
 def deleteSource(preferences_window):
      selection_model = preferences_window.TLElist.selectionModel()
@@ -181,7 +183,7 @@ def deleteSource(preferences_window):
           model = preferences_window.TLElist.model()
           model.removeRow(selected_index.row())
 
-def addSat(preferences_window):
+def addSat(self, preferences_window):
      pattern = re.compile(r'^\d{5}$')
      source = str(preferences_window.SatelliteIDbox.text())
      if re.match(pattern, source):
@@ -193,7 +195,7 @@ def addSat(preferences_window):
           model.appendRow(item)
      else:
           loader = QUiLoader()
-          error("ErrorID.ui")
+          error(self, "ErrorID.ui")
           return
 def deleteSat(preferences_window):
      selection_model = preferences_window.SatelliteList.selectionModel()
@@ -204,39 +206,40 @@ def deleteSat(preferences_window):
           model.removeRow(selected_index.row())
 
 class read:
-     try:
-          with open("prefs.json", "r") as f:
-               config = json.load(f)
-               location = config["location"]
-               TLEsources = config["tle_sources"]
-               TLEupdate = config["tle_update"]
-               lastTLEupdate = config["last_tle_update"]
-               SatIDs = config["satellite_ids"]
-               UpdateRate = config["update_rate"]
-               RadConfig = config["radio_config"]
-               RotConfig = config["rotator_config"]
-     except:
-          writeDefPrefsFile()
-          with open("prefs.json", "r") as f:
-               config = json.load(f)
-          location = config["location"]
-          TLEsources = config["tle_sources"]
-          TLEupdate = config["tle_update"]
-          lastTLEupdate = config["last_tle_update"]
-          SatIDs = config["satellite_ids"]
-          UpdateRate = config["update_rate"]
-          RadConfig = config["radio_config"]
-          RotConfig = config["rotator_config"]
-          error("ErrorRead.ui")
+     def __init__(self, mainSelf):
+          self.mainSelf = mainSelf
+          try:
+               with open("prefs.json", "r") as f:
+                    config = json.load(f)
+               self.location = config["location"]
+               self.TLEsources = config["tle_sources"]
+               self.TLEupdate = config["tle_update"]
+               self.lastTLEupdate = config["last_tle_update"]
+               self.SatIDs = config["satellite_ids"]
+               self.UpdateRate = config["update_rate"]
+               self.RadConfig = config["radio_config"]
+               self.RotConfig = config["rotator_config"]
+          except:
+               writeDefPrefsFile()
+               with open("prefs.json", "r") as f:
+                    config = json.load(f)
+               self.location = config["location"]
+               self.TLEsources = config["tle_sources"]
+               self.TLEupdate = config["tle_update"]
+               self.lastTLEupdate = config["last_tle_update"]
+               self.SatIDs = config["satellite_ids"]
+               self.UpdateRate = config["update_rate"]
+               self.RadConfig = config["radio_config"]
+               self.RotConfig = config["rotator_config"]
+               error(self.mainSelf, "ErrorRead.ui")
 
-     latitude, longitude = location
-     period, unit = TLEupdate
+          self.latitude, self.longitude = self.location
+          self.period, self.unit = self.TLEupdate
 
-def fetchTLEs():
+def fetchTLEs(self):
      print("Updating TLEs.....")
-     urls = read.TLEsources
+     urls = self.read_instance.TLEsources
      unique_tles = set()
-     target_norad_ids = read.SatIDs
      for url in urls:
           response = requests.get(url)
           status = response.status_code
@@ -260,9 +263,9 @@ def fetchTLEs():
                loop.exec()
                return
      print("TLE update finished")
-def updateUsedTLEs():
+def updateUsedTLEs(self):
      print("Updating active satellites list.....")
-     target_norad_ids = read.SatIDs
+     target_norad_ids = self.read_instance.SatIDs
      with open('AllTLEs.txt', 'r', encoding='utf-8') as file:
           all_tles = file.readlines()
      matching_tles = []
@@ -293,7 +296,7 @@ class geolocate:
           accuracy = g.accuracy
 
 class Worker(QThread):
-     def __init__(self, sat_id, x, sat_info, now, satellites, by_number, base, ts):
+     def __init__(self, mainSelf, sat_id, x, sat_info, now, satellites, by_number, base, ts):
           super().__init__()
           self.sat_id = sat_id
           self.index = x
@@ -318,7 +321,7 @@ class Worker(QThread):
           try:
                self.satellite = self.by_number[int(self.sat_id)]
           except KeyError:
-               updateUsedTLEs()
+               updateUsedTLEs(mainSelf)
                self.__init__(self, sat_id, x, sat_info, name, now, satellites, by_number, base, ts)
 
      def run(self):
@@ -343,24 +346,25 @@ class main(QMainWindow):
      def __init__(self):
           super(main, self).__init__()
           loader = QUiLoader()
-
           ui_file_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ui files", "SatelliteTracker.ui")
           self.ui = loader.load(ui_file_path, None)
           self.setCentralWidget(self.ui)
+
+          self.windows = []
+          self.read_instance = read(self)
           
           self.ui.actionPreferences.triggered.connect(self.open_preferences)
           self.ui.actionRadio.triggered.connect(self.open_radio)
           self.ui.actionRotator.triggered.connect(self.open_rotator)
-          self.ui.actionManual_TLE_update.triggered.connect(fetchTLEs)
-          self.ui.actionManual_TLE_update.triggered.connect(updateUsedTLEs)
+          self.ui.actionManual_TLE_update.triggered.connect(lambda: fetchTLEs(self))
+          self.ui.actionManual_TLE_update.triggered.connect(lambda: updateUsedTLEs(self))
 
           self.threads = []
           self.event_loop = QEventLoop()
-
-          updateUnit = read.unit
-          timer2 = QTimer(self)
-          timer2.timeout.connect(lambda: self.tleUpdate(updateUnit))
-          timer2.start(1000)
+          updateUnit = self.read_instance.unit
+          self.timer2 = QTimer(self)
+          self.timer2.timeout.connect(lambda: self.tleUpdate(updateUnit))
+          self.timer2.start(1000)
           
           self.tableView = self.ui.tableView
           headers = [
@@ -370,11 +374,9 @@ class main(QMainWindow):
           model = QStandardItemModel()
           model.setHorizontalHeaderLabels(headers)
           self.tableView.setModel(model)
-          timer1 = QTimer(self)
-          timer1.timeout.connect(lambda: self.update_sat_info(self.tableView, model))
-          timer1.start(int(read.UpdateRate))
-
-          self.windows = []
+          self.timer1 = QTimer(self)
+          self.timer1.timeout.connect(lambda: self.update_sat_info(self.tableView, model))
+          self.timer1.start(int(self.read_instance.UpdateRate))
           
      def restoreDefaults(self, preferences_window):
           loader = QUiLoader()
@@ -393,10 +395,10 @@ class main(QMainWindow):
           loop = QEventLoop()
           loop.exec()
      def open_preferences(self):
-          location = read.location
-          TLEsources = read.TLEsources
-          TLEupdate = read.TLEupdate
-          SatIDs = read.SatIDs
+          location = self.read_instance.location
+          TLEsources = self.read_instance.TLEsources
+          TLEupdate = self.read_instance.TLEupdate
+          SatIDs = self.read_instance.SatIDs
           latitude, longitude = location
           period, unit = TLEupdate
 
@@ -423,7 +425,7 @@ class main(QMainWindow):
 
 
           preferences_window.SaveButton_2.clicked.connect(lambda: self.updateTimers(preferences_window))
-          preferences_window.SaveButton_2.clicked.connect(lambda: writeNewPrefsFile(preferences_window))
+          preferences_window.SaveButton_2.clicked.connect(lambda: writeNewPrefsFile(self, preferences_window))
           preferences_window.SaveButton_2.clicked.connect(lambda: self.refresh_preferences())
           preferences_window.CancelButton.clicked.connect(lambda: preferences_window.close())
           preferences_window.CancelButton.clicked.connect(lambda: self.windows.remove(preferences_window))
@@ -431,13 +433,13 @@ class main(QMainWindow):
           preferences_window.GeolocateButton.clicked.connect(lambda: (preferences_window.LatInputBox.setText(str(geolocate.latitude))))
           preferences_window.GeolocateButton.clicked.connect(lambda: (preferences_window.LonInputBox.setText(str(geolocate.longitude))))
           preferences_window.GeolocateButton.clicked.connect(lambda: (print(f"Accuracy is within {geolocate.accuracy} meters." if geolocate.accuracy else "Accuracy estimate not available")))
-          preferences_window.LoadButton.clicked.connect(lambda: (preferences_window.LatInputBox.setText(read.latitude)))
-          preferences_window.LoadButton.clicked.connect(lambda: (preferences_window.LonInputBox.setText(read.longitude)))
+          preferences_window.LoadButton.clicked.connect(lambda: (preferences_window.LatInputBox.setText(self.read_instance.latitude)))
+          preferences_window.LoadButton.clicked.connect(lambda: (preferences_window.LonInputBox.setText(self.read_instance.longitude)))
 
-          preferences_window.TLEadd.clicked.connect(lambda: addSource(preferences_window))
+          preferences_window.TLEadd.clicked.connect(lambda: addSource(self, preferences_window))
           preferences_window.TLEremove.clicked.connect(lambda: deleteSource(preferences_window))
           
-          preferences_window.SatelliteAdd.clicked.connect(lambda: addSat(preferences_window))
+          preferences_window.SatelliteAdd.clicked.connect(lambda: addSat(self, preferences_window))
           preferences_window.SatelliteRemove.clicked.connect(lambda: deleteSat(preferences_window))
           
           preferences_window.show()
@@ -447,12 +449,12 @@ class main(QMainWindow):
           try:
                with open("prefs.json", "r") as f:
                     config = json.load(f)
-                    read.location = config["location"]
-                    read.latitude, read.longitude = read.location
-                    read.TLEsources = config["tle_sources"]
-                    read.TLEupdate = config["tle_update"]
-                    read.SatIDs = config["satellite_ids"]
-                    read.UpdateRate = config["update_rate"]
+                    self.read_instance.location = config["location"]
+                    self.read_instance.latitude, self.read_instance.longitude = self.read_instance.location
+                    self.read_instance.TLEsources = config["tle_sources"]
+                    self.read_instance.TLEupdate = config["tle_update"]
+                    self.read_instance.SatIDs = config["satellite_ids"]
+                    self.read_instance.UpdateRate = config["update_rate"]
           except FileNotFoundError:
                writeDefPrefsFile()
                self.refresh_preferences()
@@ -494,9 +496,26 @@ class main(QMainWindow):
 
      def updateTimers(self, preferences_window):
           newUpdate = str(preferences_window.UpdateRate.text())
-          if newUpdate!=read.UpdateRate:
+          if newUpdate!=self.read_instance.UpdateRate:
                self.timer1.stop()
-               self.timer1.start(newUpdate)
+               self.timer1.start(int(newUpdate))
+          newTLEs = []
+          model = preferences_window.TLElist.model()
+          for index in range(model.rowCount()):
+               item_index = model.index(index, 0)
+               item_text = model.data(item_index)
+               newTLEs.append(item_text)
+          if newTLEs!=self.read_instance.TLEsources:
+               if newUpdate!=self.read_instance.UpdateRate:
+                    fetchTLEs(self)
+                    updateUsedTLEs(self)
+                    self.timer1.stop()
+                    self.timer1.start(int(newUpdate))
+               else:
+                    fetchTLEs(self)
+                    updateUsedTLEs(self)
+                    self.timer1.stop()
+                    self.timer1.start(int(self.read_instance.UpdateRate))
 
      def create_threads(self, SatIDs, latitude, longitude):
           index = 0
@@ -513,20 +532,20 @@ class main(QMainWindow):
                try:
                     satellites = load.tle_file("UsedTLEs.txt", reload=True)
                except:
-                    fetchTLEs()
-                    updateUsedTLEs()
+                    fetchTLEs(self)
+                    updateUsedTLEs(self)
                by_number = {sat.model.satnum: sat for sat in satellites}
                base = wgs84.latlon(float(latitude), float(longitude))
                ts = load.timescale()
-               worker = Worker(sat_id, index, sat_info, now, satellites, by_number, base, ts)
+               worker = Worker(self, sat_id, index, sat_info, now, satellites, by_number, base, ts)
                worker.start()
                worker.finished.connect(lambda: self.increment_threads())
                self.threads.append(worker)
 
      def tleUpdate(self, updateUnit):
           run = True
-          date1 = read.lastTLEupdate
-          if isinstance(read.lastTLEupdate, str):
+          date1 = self.read_instance.lastTLEupdate
+          if isinstance(self.read_instance.lastTLEupdate, str):
                date1 = datetime.strptime(date1, "%Y-%m-%d %H:%M:%S")
           date2 = datetime(int(datetime.now().strftime("%Y").lstrip("0")), int(datetime.now().strftime("%m").lstrip("0")), int(datetime.now().strftime("%d").lstrip("0")), int(datetime.now().strftime("%H").lstrip("0")))
           difference = relativedelta(date2, date1)
@@ -537,75 +556,75 @@ class main(QMainWindow):
           differenceWeeks += (differenceMonths * (365/12/7)) if differenceMonths > 0 else 0
           differenceDays += (differenceWeeks * 7) if differenceWeeks > 0 else 0
           differenceHours += (differenceDays * 24) if differenceDays > 0 else 0
-          if updateUnit == "Months" and differenceMonths >= read.period and run == True:
-               read.lastTLEupdate = date2
+          if updateUnit == "Months" and differenceMonths >= self.read_instance.period and run == True:
+               self.read_instance.lastTLEupdate = date2
                newConfig = {
-                    "location": read.location,
-                    "tle_sources": read.TLEsources,
-                    "tle_update" : read.TLEupdate,
-                    "satellite_ids": read.SatIDs,
-                    "update_rate" : read.UpdateRate,
+                    "location": self.read_instance.location,
+                    "tle_sources": self.read_instance.TLEsources,
+                    "tle_update" : self.read_instance.TLEupdate,
+                    "satellite_ids": self.read_instance.SatIDs,
+                    "update_rate" : self.read_instance.UpdateRate,
                     "last_tle_update" : date2,
-                    "radio_config": read.RadConfig,
-                    "rotator_config": read.RotConfig
+                    "radio_config": self.read_instance.RadConfig,
+                    "rotator_config": self.read_instance.RotConfig
                }
                with open("prefs.json", "w") as f:
                     json.dump(newConfig, f, indent=4)
-               fetchTLEs()
-               updateUsedTLEs()
+               fetchTLEs(self)
+               updateUsedTLEs(self)
                run = False
-          if updateUnit == "Weeks" and differenceWeeks >= read.period and run == True:
-               read.lastTLEupdate = date2
+          if updateUnit == "Weeks" and differenceWeeks >= self.read_instance.period and run == True:
+               self.read_instance.lastTLEupdate = date2
                newConfig = {
-                    "location": read.location,
-                    "tle_sources": read.TLEsources,
-                    "tle_update" : read.TLEupdate,
-                    "satellite_ids": read.SatIDs,
-                    "update_rate" : read.UpdateRate,
+                    "location": self.read_instance.location,
+                    "tle_sources": self.read_instance.TLEsources,
+                    "tle_update" : self.read_instance.TLEupdate,
+                    "satellite_ids": self.read_instance.SatIDs,
+                    "update_rate" : self.read_instance.UpdateRate,
                     "last_tle_update" : date2,
-                    "radio_config": read.RadConfig,
-                    "rotator_config": read.RotConfig
+                    "radio_config": self.read_instance.RadConfig,
+                    "rotator_config": self.read_instance.RotConfig
                }
                with open("prefs.json", "w") as f:
                     json.dump(newConfig, f, indent=4)
-               fetchTLEs()
-               updateUsedTLEs()
+               fetchTLEs(self)
+               updateUsedTLEs(self)
                run = False
-          if updateUnit == "Days" and differenceDays >= read.period and run == True:
-               read.lastTLEupdate = date2
+          if updateUnit == "Days" and differenceDays >= self.read_instance.period and run == True:
+               self.read_instance.lastTLEupdate = date2
                newConfig = {
-                    "location": read.location,
-                    "tle_sources": read.TLEsources,
-                    "tle_update" : read.TLEupdate,
-                    "satellite_ids": read.SatIDs,
-                    "update_rate" : read.UpdateRate,
+                    "location": self.read_instance.location,
+                    "tle_sources": self.read_instance.TLEsources,
+                    "tle_update" : self.read_instance.TLEupdate,
+                    "satellite_ids": self.read_instance.SatIDs,
+                    "update_rate" : self.read_instance.UpdateRate,
                     "last_tle_update" : date2,
-                    "radio_config": read.RadConfig,
-                    "rotator_config": read.RotConfig
+                    "radio_config": self.read_instance.RadConfig,
+                    "rotator_config": self.read_instance.RotConfig
                }
                with open("prefs.json", "w") as f:
                     json.dump(newConfig, f, indent=4)
-               fetchTLEs()
-               updateUsedTLEs()
+               fetchTLEs(self)
+               updateUsedTLEs(self)
                run = False
-          if updateUnit == "Hours" and differenceHours >= read.period and run == True:
-               read.lastTLEupdate = date2
+          if updateUnit == "Hours" and differenceHours >= self.read_instance.period and run == True:
+               self.read_instance.lastTLEupdate = date2
                newConfig = {
-                    "location": read.location,
-                    "tle_sources": read.TLEsources,
-                    "tle_update" : read.TLEupdate,
-                    "satellite_ids": read.SatIDs,
-                    "update_rate" : read.UpdateRate,
+                    "location": self.read_instance.location,
+                    "tle_sources": self.read_instance.TLEsources,
+                    "tle_update" : self.read_instance.TLEupdate,
+                    "satellite_ids": self.read_instance.SatIDs,
+                    "update_rate" : self.read_instance.UpdateRate,
                     "last_tle_update" : str(date2),
-                    "radio_config": read.RadConfig,
-                    "rotator_config": read.RotConfig
+                    "radio_config": self.read_instance.RadConfig,
+                    "rotator_config": self.read_instance.RotConfig
                }
                with open("prefs.json", "w") as f:
                     json.dump(newConfig, f, indent=4)
-               fetchTLEs()
-               updateUsedTLEs()
+               fetchTLEs(self)
+               updateUsedTLEs(self)
      def update_sat_info(self, tableView, model):
-          self.create_threads(read.SatIDs, read.latitude, read.longitude)
+          self.create_threads(self.read_instance.SatIDs, self.read_instance.latitude, self.read_instance.longitude)
           self.event_loop = QEventLoop()
           QTimer.singleShot(0, self.event_loop.quit)
           self.event_loop.exec()
@@ -630,10 +649,13 @@ class main(QMainWindow):
 
      def increment_threads(self):
           self.finished_threads += 1
-          if self.finished_threads+1 == self.total_threads:
+          if self.finished_threads == self.total_threads:
+               self.threads.clear()
                self.event_loop.quit()
-
      def closeEvent(self, event):
+          for thread in self.threads:
+                    thread.wait()
+                    self.threads.remove(thread)
           for window in self.windows:
                window.close()
 
