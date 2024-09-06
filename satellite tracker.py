@@ -5,6 +5,7 @@ from PySide6.QtUiTools import QUiLoader
 from PySide6.QtCore import QTimer, QThread, QEventLoop, Qt
 from PySide6.QtGui import QStandardItem, QStandardItemModel, QFont, QColor, QBrush
 import os
+import platform
 import json
 import re
 import geocoder
@@ -14,12 +15,51 @@ from dateutil.relativedelta import relativedelta
 from skyfield.api import load, wgs84
 import time
 
+def cloneMissingUIfiles(filePath, gitPath):
+     print(f"UI file {filePath} missing, cloning from GitHub.....")
+     import subprocess
+     gitURL = "https://raw.githubusercontent.com/z-taylor/Satellite-tracker-reworked/main/ui_files"
+     gitPath = str(gitURL) + "/" + str(gitPath)
+     try:
+          subprocess.run(["curl", "--version"], check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+          try:
+               subprocess.run(["curl", "-o", filePath, gitPath], check=True)
+               print("UI files cloned successfully")
+          except subprocess.CalledProcessError as e:
+               print(f"Failed to clone UI files: {e}")
+     except:
+          if str(platform.system()) == "Linux":
+               try:
+                    print("Installing git.....")
+                    subprocess.run(["sudo", "apt-get", "update"], check=True)
+                    subprocess.run(["sudo", "apt-get", "install", "-y", "curl"], check=True)
+                    print("Git installed successfully")
+               except subprocess.CalledProcessError as e:
+                    print(f"Failed to install curl: {e}")
+          elif str(platform.system()) == "Windows":
+               try:
+                    print("Installing git.....")
+                    subprocess.run(["winget", "install", "Curl.Curl", "--silent"], check=True)
+                    print("Git installed successfully on Windows using winget.")
+               except subprocess.CalledProcessError as e:
+                    print(f"Failed to install curl: {e}")
+          else:
+               print("Your OS is not officially supported. Either try manually installing curl or manually copying the missing ui files and try again")
+
+
 def error(self, path):
      if not QApplication.instance():
          app = QApplication(sys.argv)
      loader = QUiLoader()
-     error_ui_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ui files", "errors", path)
-     error_window = loader.load(error_ui_path, None)
+     try:
+          error_ui_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ui_files", "errors", path)
+          error_window = loader.load(error_ui_path, None)
+     except:
+          filePath = (os.path.join(os.path.dirname(os.path.abspath(__file__)), "ui_files", "errors", path))
+          gitPath = ("errors") + "/" + str(path)
+          cloneMissingUIfiles(filePath, gitPath)
+          error_ui_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ui_files", "errors", path)
+          error_window = loader.load(error_ui_path, None)
      self.windows.append(error_window)
      error_window.OKbutton.clicked.connect(error_window.close)
      error_window.OKbutton.clicked.connect(lambda: self.windows.remove(error_window))
@@ -254,8 +294,15 @@ def fetchTLEs(self):
                          file.write(tle + "\n")
           else: 
                loader = QUiLoader()
-               error_ui_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ui files", "errors", "ErrorBrokenTle.ui")
-               error_window = loader.load(error_ui_path, None)
+               try:
+                    error_ui_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ui_files", "errors", "ErrorBrokenTle.ui")
+                    error_window = loader.load(error_ui_path, None)
+               except:
+                    filePath = (os.path.join(os.path.dirname(os.path.abspath(__file__)), "ui_files", "errors", "ErrorBrokenTle.ui"))
+                    gitPath = "errors" + "/" + "ErrorBrokenTle.ui"
+                    cloneMissingUIfiles(filePath, gitPath)
+                    error_ui_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ui_files", "errors", "ErrorBrokenTle.ui")
+                    error_window = loader.load(error_ui_path, None)
                error_window.label.text(f"One or more broken TLE sources. The link may be typed incorrectly or the website may be down.\nError code: {status}\nBroken link: {url}")
                error_window.OKbutton.clicked.connect(error_window.close)
                error_window.show()
@@ -308,21 +355,28 @@ class Worker(QThread):
           self.h = self.now.strftime("%H").lstrip("0")
           self.date = int(self.d+self.mo+self.y+self.h)
           self.satellites = satellites
-          for satellite in satellites:
-               if satellite.model.satnum == int(sat_id):
-                    self.name = satellite.name
-                    break
-               else:
-                    self.name = "Name unavailable"
-          name = self.name
+          try:
+               for satellite in satellites:
+                    if satellite.model.satnum == int(sat_id):
+                         self.name = satellite.name
+                         break
+                    else:
+                         self.name = "Name unavailable"
+               
+               name = self.name
+          except:
+               print("TLE file empty or formatted incorrectly. Refreshing TLEs and restarting thread(s).....")
+               raise ValueError(2)
+               
+               name = self.name
           self.by_number = by_number
           self.base = base
           self.ts = ts
           try:
                self.satellite = self.by_number[int(self.sat_id)]
           except KeyError:
-               updateUsedTLEs(mainSelf)
-               self.__init__(self, sat_id, x, sat_info, name, now, satellites, by_number, base, ts)
+               print(f"Satellite ID {self.sat_id} not found. Updating active TLE list and restarting thread.....")
+               raise ValueError(1)
 
      def run(self):
           trackSat, name, now, y, mo, d, h, date, by_number, base, ts, satellite, index = self.sat_id, self.name, self.now, self.y, self.mo, self.d, self.h, self.date, self.by_number, self.base, self.ts, self.satellite, self.index
@@ -346,8 +400,15 @@ class main(QMainWindow):
      def __init__(self):
           super(main, self).__init__()
           loader = QUiLoader()
-          ui_file_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ui files", "SatelliteTracker.ui")
-          self.ui = loader.load(ui_file_path, None)
+          try:
+               ui_file_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ui_files", "SatelliteTracker.ui")
+               self.ui = loader.load(ui_file_path, None)
+          except:
+               filePath = (os.path.join(os.path.dirname(os.path.abspath(__file__)), "ui_files", "SatelliteTracker.ui"))
+               gitPath = "SatelliteTracker.ui"
+               cloneMissingUIfiles(filePath, gitPath)
+               ui_file_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ui_files", "SatelliteTracker.ui")
+               self.ui = loader.load(ui_file_path, None)
           self.setCentralWidget(self.ui)
 
           self.windows = []
@@ -380,8 +441,15 @@ class main(QMainWindow):
           
      def restoreDefaults(self, preferences_window):
           loader = QUiLoader()
-          confirm_ui_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ui files", "ConfirmChoice.ui")
-          confirm_window = loader.load(confirm_ui_path, None)
+          try:
+               confirm_ui_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ui_files", "ConfirmChoice.ui")
+               confirm_window = loader.load(confirm_ui_path, None)
+          except:
+               filePath = (os.path.join(os.path.dirname(os.path.abspath(__file__)), "ui_files", "ConfirmChoice.ui"))
+               gitPath = "ConfirmChoice.ui"
+               cloneMissingUIfiles(filePath, gitPath)
+               confirm_ui_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ui_files", "ConfirmChoice.ui")
+               confirm_window = loader.load(confirm_ui_path, None)
           self.windows.append(confirm_window)
           confirm_window.YesButton.clicked.connect(lambda: writeDefPrefsFile())
           confirm_window.YesButton.clicked.connect(lambda: confirm_window.close())
@@ -403,8 +471,15 @@ class main(QMainWindow):
           period, unit = TLEupdate
 
           loader = QUiLoader()
-          preferences_ui_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ui files", "Preferences.ui")
-          preferences_window = loader.load(preferences_ui_path, None)
+          try:
+               preferences_ui_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ui_files", "Preferences.ui")
+               preferences_window = loader.load(preferences_ui_path, None)
+          except:
+               filePath = (os.path.join(os.path.dirname(os.path.abspath(__file__)), "ui_files", "Preferences.ui"))
+               gitPath = "Preferences.ui"
+               cloneMissingUIfiles(filePath, gitPath)
+               preferences_ui_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ui_files", "Preferences.ui")
+               preferences_window = loader.load(preferences_ui_path, None)
           self.windows.append(preferences_window)
           preferences_window.LatInputBox.setText(str(latitude))
           preferences_window.LonInputBox.setText(str(longitude))
@@ -468,8 +543,17 @@ class main(QMainWindow):
           #code to connect
      def open_radio(self):
           loader = QUiLoader()
-          radio_ui_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ui files", "Radio.ui")
-          radio_window = loader.load(radio_ui_path, None)
+          
+          try:
+               radio_ui_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ui_files", "Radio.ui")
+               radio_window = loader.load(radio_ui_path, None)
+          except:
+               filePath = (os.path.join(os.path.dirname(os.path.abspath(__file__)), "ui_files", "Radio.ui"))
+               gitPath = "Rotator.ui"
+               cloneMissingUIfiles(filePath, gitPath)
+               radio_ui_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ui_files", "Radio.ui")
+               radio_window = loader.load(radio_ui_path, None)
+          
           radio_window.saveButton.clicked.connect(self.radSave)
           radio_window.connectButton.clicked.connect(self.radConnect)
           self.windows.append(radio_window)
@@ -485,8 +569,15 @@ class main(QMainWindow):
           #code to connect
      def open_rotator(self):
           loader = QUiLoader()
-          rotator_ui_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ui files", "Rotator.ui")
-          rotator_window = loader.load(rotator_ui_path, None)
+          try:
+               rotator_ui_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ui_files", "Rotator.ui")
+               rotator_window = loader.load(rotator_ui_path, None)
+          except:
+               filePath = (os.path.join(os.path.dirname(os.path.abspath(__file__)), "ui_files", "Rotator.ui"))
+               gitPath = "Rotator.ui"
+               cloneMissingUIfiles(filePath, gitPath)
+               rotator_ui_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ui_files", "Rotator.ui")
+               rotator_window = loader.load(rotator_ui_path, None)
           rotator_window.saveButton.clicked.connect(self.rotSave)
           rotator_window.connectButton.clicked.connect(self.rotConnect)
           self.windows.append(rotator_window)
@@ -537,10 +628,33 @@ class main(QMainWindow):
                by_number = {sat.model.satnum: sat for sat in satellites}
                base = wgs84.latlon(float(latitude), float(longitude))
                ts = load.timescale()
-               worker = Worker(self, sat_id, index, sat_info, now, satellites, by_number, base, ts)
-               worker.start()
-               worker.finished.connect(lambda: self.increment_threads())
-               self.threads.append(worker)
+               try:
+                    worker = Worker(self, sat_id, index, sat_info, now, satellites, by_number, base, ts)
+                    worker.start()
+                    worker.finished.connect(lambda: self.increment_threads())
+                    self.threads.append(worker)
+               except ValueError as e:
+                    if e.args[0] == 1:
+                         print(f"Restarting thread {index}.....")
+                         updateUsedTLEs(self)
+                         satellites = load.tle_file("UsedTLEs.txt", reload=True)
+                         by_number = {sat.model.satnum: sat for sat in satellites}
+                         worker = Worker(self, sat_id, index, sat_info, now, satellites, by_number, base, ts)
+                         worker.start()
+                         print(f"Thread {index} restarted")
+                         worker.finished.connect(lambda: self.increment_threads())
+                         self.threads.append(worker)
+                    elif e.args[0] == 2:
+                         print(f"Restarting thread {index}.....")
+                         fetchTLEs(self)
+                         updateUsedTLEs(self)
+                         satellites = load.tle_file("UsedTLEs.txt", reload=True)
+                         by_number = {sat.model.satnum: sat for sat in satellites}
+                         worker = Worker(self, sat_id, index, sat_info, now, satellites, by_number, base, ts)
+                         worker.start()
+                         print(f"Thread {index} restarted")
+                         worker.finished.connect(lambda: self.increment_threads())
+                         self.threads.append(worker)
 
      def tleUpdate(self, updateUnit):
           run = True
