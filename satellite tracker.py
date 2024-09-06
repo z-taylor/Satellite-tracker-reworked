@@ -3,7 +3,7 @@ from PySide6 import QtCore
 from PySide6.QtWidgets import QApplication, QMainWindow
 from PySide6.QtUiTools import QUiLoader
 from PySide6.QtCore import QTimer, QThread, QEventLoop, Qt
-from PySide6.QtGui import QStandardItem, QStandardItemModel, QFont, QColor, QBrush
+from PySide6.QtGui import QStandardItem, QStandardItemModel, QColor, QBrush
 import os
 import platform
 import json
@@ -17,6 +17,15 @@ import time
 
 def cloneMissingUIfiles(filePath, gitPath):
      print(f"UI file {filePath} missing, cloning from GitHub.....")
+     directory = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ui_files")
+     errorDirectory = os.path.join(directory, "errors")
+     if not os.path.exists(directory):
+          print(f"Directory {directory} not found, creating it...")
+          os.makedirs(directory)
+          os.makedirs(errorDirectory)
+     if not os.path.exists(errorDirectory):
+          print(f"Directory {errorDirectory} not found, creating it...")
+          os.makedirs(errorDirectory)
      import subprocess
      gitURL = "https://raw.githubusercontent.com/z-taylor/Satellite-tracker-reworked/main/ui_files"
      gitPath = str(gitURL) + "/" + str(gitPath)
@@ -45,7 +54,6 @@ def cloneMissingUIfiles(filePath, gitPath):
                     print(f"Failed to install curl: {e}")
           else:
                print("Your OS is not officially supported. Either try manually installing curl or manually copying the missing ui files and try again")
-
 
 def error(self, path):
      if not QApplication.instance():
