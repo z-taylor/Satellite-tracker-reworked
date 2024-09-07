@@ -2,9 +2,8 @@
 setlocal enabledelayedexpansion
 net session >nul 2>&1
 if %errorlevel% neq 0 (
-    echo This script requires administrative privileges. Please run as an administrator
-    echo Requesting elevated permissions.....
-    powershell -Command "Start-Process cmd -ArgumentList '/c %~f0' -Verb runAs"
+    echo This script requires administrative privileges. Please run again as an administrator
+    pause
     exit /b 0
 )
 set "choco_path=C:\ProgramData\chocolatey\bin\choco.exe"
