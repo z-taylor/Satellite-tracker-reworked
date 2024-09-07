@@ -1,63 +1,42 @@
 @echo off
-setlocal EnableDelayedExpansion
-set "WINGET_PATH=%LocalAppData%\Microsoft\WindowsApps\winget.exe"
-if not exist "%WINGET_PATH%" (
-    echo winget is not installed. Installing winget.....
-    curl -L -o "%TEMP%\Microsoft.DesktopAppInstaller_8wekyb3d8bbwe.msixbundle" "https://github.com/microsoft/winget-cli/releases/download/v1.8.1791/Microsoft.DesktopAppInstaller_8wekyb3d8bbwe.msixbundle"
-    echo Installing the App Installer package...
-    powershell.exe -Command "Add-AppxPackage -Path '%TEMP%\Microsoft.DesktopAppInstaller_8wekyb3d8bbwe.msixbundle'"
-    del "%TEMP%\Microsoft.VCLibs.x64.14.00.Desktop.appx"
-    del "%TEMP%\Microsoft.UI.Xaml.2.7.x64.appx"
-    del "%TEMP%\Microsoft.DesktopAppInstaller_8wekyb3d8bbwe.msixbundle"
-    if exist "%WINGET_PATH%" (
-        echo winget has been installed successfully.
-        echo Checking winget version.....
-        "%WINGET_PATH%" --version
+setlocal
+python --version >nul 2>&1
+if %errorlevel% neq 0 (
+    echo Python is not installed
+    for /f "tokens=*" %%i in ('choco --version') do set choco_version=%%i
+    if not defined choco_version (
+        echo Chocolatey is not installed. Installing Chocolatey.....
+        powershell -Command "Set-ExecutionPolicy Bypass -Scope Process; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; iex ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))"
+        choco --version >nul 2>&1
+        if %errorlevel% neq 0 (
+            echo Chocolatey installation failed. Exiting.....
+            exit /b 1
+        )
     ) else (
-        echo winget installation failed. Please restart your computer and try again.
-        pause
+        echo Chocolatey is already installed
+    )
+
+    echo Installing Python via Chocolatey.....
+    choco install python -y
+    refreshenv
+    python --version >nul 2>&1
+    if %errorlevel% neq 0 (
+        echo Python installation failed. Exiting.....
         exit /b 1
     )
+) else (
+    echo Python is already installed
 )
-set "PYTHON_LOCATIONS=C:\Python311;C:\Program Files\Python311;C:\Users\Zachary\AppData\Local\Programs\Python\Python311;%ProgramFiles%\Python311;%ProgramFiles(x86)%\Python311"
-for %%i in ("%PYTHON_LOCATIONS:;=" "%") do (
-    set "location=%%~i"
-    if exist "!location!\python.exe" (
-        set "PYTHON_PATH=!location!\python.exe"
-        echo Python found at: !PYTHON_PATH!
-        goto :found_python
-    )
-)
-:not_found_python
-echo Python not found in common locations. Attempting to install......
-"%WINGET_PATH%" install --id=Python.Python.3.11 --source=winget
+where python >nul 2>&1
 if %errorlevel% neq 0 (
-    echo Failed to install Python. Please install manually from https://www.python.org/downloads/. Please make to check the box that says "Add Python to PATH"
-    pause
-    exit /b 1
+    echo Python is not in the PATH.
+    for /f "usebackq tokens=*" %%i in (`python -c "import sys; print(sys.executable)"`) do set python_path=%%i
+    set python_dir=%python_path%\..\
+    echo Setting Python path to %python_path%
+    set PATH=%python_dir%;%PATH%
+) else (
+    echo Python is in the PATH
 )
-timeout /t 10 /nobreak >nul
-set "PYTHON_PATH=%USERPROFILE%\AppData\Local\Programs\Python\Python311\python.exe"
-:found_python
-for %%F in ("%PYTHON_PATH%") do set "PYTHON_DIR=%%~dpF"
-setx PATH "%PATH%;%PYTHON_DIR%;%PYTHON_DIR%Scripts" /M
-set "PATH=%PATH%;%PYTHON_DIR%;%PYTHON_DIR%Scripts"
-"%PYTHON_PATH%" --version
-if %errorlevel% neq 0 (
-    echo Python installation failed. Exiting.....
-    pause
-    exit /b 1
-)
-"%PYTHON_PATH%" -m pip install --upgrade pip
-if %errorlevel% neq 0 (
-    echo Pip upgrade failed. Exiting.....
-    pause
-    exit /b 1
-)
-"%PYTHON_PATH%" -m pip install PySide6 geocoder requests pyhigh pyproj skyfield python-dateutil pyhamlib
-if %errorlevel% neq 0 (
-    echo Package installation failed. Exiting.....
-    pause
-    exit /b 1
-)
+python -m pip install --upgrade pip
+python -m pip install PySide6 geocoder requests pyhigh pyproj skyfield python-dateutil pyhamlib
 pause
