@@ -1,42 +1,45 @@
 @echo off
-setlocal
+setlocal enabledelayedexpansion
+net session >nul 2>&1
+if %errorlevel% neq 0 (
+    echo This script requires administrative privileges. Please run as an administrator
+    echo Requesting elevated permissions.....
+    powershell -Command "Start-Process cmd -ArgumentList '/c %~f0' -Verb runAs"
+    exit /b 0
+)
+set "choco_path=C:\ProgramData\chocolatey\bin\choco.exe"
 python --version >nul 2>&1
 if %errorlevel% neq 0 (
     echo Python is not installed
-    for /f "tokens=*" %%i in ('choco --version') do set choco_version=%%i
-    if not defined choco_version (
+    :: Check if Chocolatey is installed
+    if not exist "%choco_path%" (
         echo Chocolatey is not installed. Installing Chocolatey.....
         powershell -Command "Set-ExecutionPolicy Bypass -Scope Process; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; iex ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))"
-        choco --version >nul 2>&1
-        if %errorlevel% neq 0 (
+        if not exist "%choco_path%" (
             echo Chocolatey installation failed. Exiting.....
+            pause
             exit /b 1
         )
+        echo Chocolatey installed successfully
     ) else (
         echo Chocolatey is already installed
     )
-
     echo Installing Python via Chocolatey.....
-    choco install python -y
-    refreshenv
-    python --version >nul 2>&1
-    if %errorlevel% neq 0 (
-        echo Python installation failed. Exiting.....
-        exit /b 1
-    )
+    "%choco_path%" install python -y
+    call :RefreshPath
 ) else (
     echo Python is already installed
 )
-where python >nul 2>&1
-if %errorlevel% neq 0 (
-    echo Python is not in the PATH.
-    for /f "usebackq tokens=*" %%i in (`python -c "import sys; print(sys.executable)"`) do set python_path=%%i
-    set python_dir=%python_path%\..\
-    echo Setting Python path to %python_path%
-    set PATH=%python_dir%;%PATH%
-) else (
-    echo Python is in the PATH
-)
+echo Upgrading pip.....
 python -m pip install --upgrade pip
+echo Installing packages.....
 python -m pip install PySide6 geocoder requests pyhigh pyproj skyfield python-dateutil pyhamlib
+echo Installation complete
 pause
+exit /b 0
+:RefreshPath
+    for /f "tokens=2*" %%a in ('reg query "HKLM\System\CurrentControlSet\Control\Session Manager\Environment" /v Path') do set "syspath=%%b"
+    for /f "tokens=2*" %%a in ('reg query "HKCU\Environment" /v Path') do set "userpath=%%b"
+    set "PATH=%syspath%;%userpath%"
+    echo PATH has been refreshed
+goto :eof
