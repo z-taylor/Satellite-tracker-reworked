@@ -284,6 +284,35 @@ class read:
           self.latitude, self.longitude = self.location
           self.period, self.unit = self.TLEupdate
 
+def fetchTransmitters():
+     print("Updating transmitters.json.....")
+     url = 'https://db.satnogs.org/api/transmitters/'
+     response = requests.get(url)
+     if response.status_code == 200:
+          data = response.json()
+          with open("transmitters.json", "w") as f:
+               json.dump(data, f, indent=4)
+     else:
+          print(f"Error {response.status_code} while requesting transmitters.json")
+          return
+     print("Finished updating transmitters.json")
+def updateUsedTransmitters(satIDs):
+     try:
+          with open("transmitters.json", "r") as f:
+               transmitters = json.load(f)
+     except FileNotFoundError:
+          fetchTransmitters()
+          with open("transmitters.json", "r") as f:
+               transmitters = json.load(f)
+     print("Updating active transmitters list.....")
+     data = []
+     for transmitter in transmitters:
+          for satID in satIDs:
+               if int(transmitter.get('norad_cat_id')) == int(satID):
+                    data.append(transmitter)
+     with open("activeTransmitters.json", "w") as f:
+          json.dump(data, f, indent=4)
+     print("Finished updating active transmitters list")
 def fetchTLEs(self):
      print("Updating TLEs.....")
      urls = self.read_instance.TLEsources
@@ -375,8 +404,6 @@ class Worker(QThread):
           except:
                print("TLE file empty or formatted incorrectly. Refreshing TLEs and restarting thread(s).....")
                raise ValueError(2)
-               
-               name = self.name
           self.by_number = by_number
           self.base = base
           self.ts = ts
@@ -388,21 +415,25 @@ class Worker(QThread):
 
      def run(self):
           trackSat, name, now, y, mo, d, h, date, by_number, base, ts, satellite, index = self.sat_id, self.name, self.now, self.y, self.mo, self.d, self.h, self.date, self.by_number, self.base, self.ts, self.satellite, self.index
-          run=True
           t = ts.now()
-          difference = satellite - base
-          topocentric = difference.at(t)
-          alt, az, distance = topocentric.altaz()
-          targetAlt = alt.degrees # elevation in degrees
-          targetAz = az.degrees # azimuth in degrees
+          pos = (satellite - base).at(t)
+          alt, az, distance = pos.altaz()
+          targetAlt = round((alt.degrees), 5) # elevation in degrees
+          targetAz = round((az.degrees), 5) # azimuth in degrees
+          _, _, distance, _, _, relative_v = pos.frame_latlon_and_rates(base)
           distance = ('{:.1f} km'.format(distance.km)) # distance in kilometers
+          dv = float(format(relative_v.km_per_s)) # delta velocity
+          relative_v = ('{:.1f} km/s'.format(relative_v.km_per_s)) # relative velocity in kilometers/second
+          f=float(100) #frequency (100 MHz)
+          c = 299742.458 #speed of light
+          doppler_sh = f"{round(((dv*f)/c), 5)} MHz" #doppler shift = delta v * f / c
           geocentric = satellite.at(t)
           lat, lon = wgs84.latlon_of(geocentric)
-          lat=lat.degrees # latitude above earth
-          lon=lon.degrees # longitude above earth
+          lat=round((lat.degrees), 5) # latitude above earth
+          lon=round((lon.degrees), 5) # longitude above earth
           horizon = targetAlt > 0 # false if below horizon true if above
           nextEvent = "Next Event" #shows next event, will work on later
-          self.sat_info[index-1] = [name, trackSat, targetAlt, targetAz, horizon, nextEvent, distance, lat, lon]
+          self.sat_info[index-1] = [name, trackSat, targetAlt, targetAz, horizon, nextEvent, distance, lat, lon, relative_v, doppler_sh]
 
 class main(QMainWindow):
      def __init__(self):
@@ -427,6 +458,8 @@ class main(QMainWindow):
           self.ui.actionRotator.triggered.connect(self.open_rotator)
           self.ui.actionManual_TLE_update.triggered.connect(lambda: fetchTLEs(self))
           self.ui.actionManual_TLE_update.triggered.connect(lambda: updateUsedTLEs(self))
+          self.ui.actionUpdate_transmitters_json.triggered.connect(lambda: fetchTransmitters())
+          self.ui.actionUpdate_transmitters_json.triggered.connect(lambda: updateUsedTransmitters(self.read_instance.SatIDs))
 
           self.threads = []
           self.event_loop = QEventLoop()
@@ -438,7 +471,8 @@ class main(QMainWindow):
           self.tableView = self.ui.tableView
           headers = [
                "Satellite name", "Norad ID", "Elevation", "Azimuth",
-               "Above horizon", "Next event", "Distance", "Latitude", "Longitude"
+               "Above horizon", "Next event", "Distance", "Latitude",
+               "Longitude", "Relative velocity", "Doppler shift @ 100 MHz"
           ]
           model = QStandardItemModel()
           model.setHorizontalHeaderLabels(headers)
@@ -516,8 +550,6 @@ class main(QMainWindow):
           preferences_window.GeolocateButton.clicked.connect(lambda: (preferences_window.LatInputBox.setText(str(geolocate.latitude))))
           preferences_window.GeolocateButton.clicked.connect(lambda: (preferences_window.LonInputBox.setText(str(geolocate.longitude))))
           preferences_window.GeolocateButton.clicked.connect(lambda: (print(f"Accuracy is within {geolocate.accuracy} meters." if geolocate.accuracy else "Accuracy estimate not available")))
-          preferences_window.LoadButton.clicked.connect(lambda: (preferences_window.LatInputBox.setText(self.read_instance.latitude)))
-          preferences_window.LoadButton.clicked.connect(lambda: (preferences_window.LonInputBox.setText(self.read_instance.longitude)))
 
           preferences_window.TLEadd.clicked.connect(lambda: addSource(self, preferences_window))
           preferences_window.TLEremove.clicked.connect(lambda: deleteSource(preferences_window))

@@ -14,6 +14,40 @@
    <string>Preferences</string>
   </property>
   <layout class="QGridLayout" name="gridLayout">
+   <item row="1" column="2">
+    <widget class="QPushButton" name="CancelButton">
+     <property name="text">
+      <string>Cancel</string>
+     </property>
+    </widget>
+   </item>
+   <item row="1" column="1">
+    <spacer name="horizontalSpacer_3">
+     <property name="orientation">
+      <enum>Qt::Orientation::Horizontal</enum>
+     </property>
+     <property name="sizeHint" stdset="0">
+      <size>
+       <width>40</width>
+       <height>20</height>
+      </size>
+     </property>
+    </spacer>
+   </item>
+   <item row="1" column="3">
+    <widget class="QPushButton" name="SaveButton_2">
+     <property name="text">
+      <string>Save</string>
+     </property>
+    </widget>
+   </item>
+   <item row="1" column="0">
+    <widget class="QPushButton" name="RestoreDefButton">
+     <property name="text">
+      <string>Restore defaults</string>
+     </property>
+    </widget>
+   </item>
    <item row="0" column="0" colspan="4">
     <widget class="QTabWidget" name="tabWidget">
      <property name="currentIndex">
@@ -27,7 +61,53 @@
        <string>Location</string>
       </attribute>
       <layout class="QGridLayout" name="gridLayout_2">
-       <item row="1" column="0">
+       <item row="4" column="0">
+        <widget class="QLabel" name="label_2">
+         <property name="text">
+          <string>Or:</string>
+         </property>
+         <property name="alignment">
+          <set>Qt::AlignmentFlag::AlignCenter</set>
+         </property>
+        </widget>
+       </item>
+       <item row="6" column="1">
+        <spacer name="verticalSpacer">
+         <property name="orientation">
+          <enum>Qt::Orientation::Vertical</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>20</width>
+           <height>40</height>
+          </size>
+         </property>
+        </spacer>
+       </item>
+       <item row="1" column="1" colspan="2">
+        <spacer name="horizontalSpacer">
+         <property name="orientation">
+          <enum>Qt::Orientation::Horizontal</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>40</width>
+           <height>20</height>
+          </size>
+         </property>
+        </spacer>
+       </item>
+       <item row="3" column="0">
+        <widget class="QLineEdit" name="LonInputBox">
+         <property name="text">
+          <string>-123.393333</string>
+         </property>
+         <property name="placeholderText">
+          <string>Input longitude here</string>
+         </property>
+        </widget>
+       </item>
+       <item row="5" column="0">
         <widget class="QPushButton" name="GeolocateButton">
          <property name="sizePolicy">
           <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
@@ -40,7 +120,7 @@
          </property>
         </widget>
        </item>
-       <item row="3" column="0">
+       <item row="1" column="0">
         <widget class="QLineEdit" name="LatInputBox">
          <property name="toolTip">
           <string/>
@@ -78,24 +158,60 @@
           </sizepolicy>
          </property>
          <property name="text">
-          <string>Current lat/lon: 
- 
-</string>
+          <string>Enter latitude / longitude:</string>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </widget>
+     <widget class="QWidget" name="tab_3">
+      <attribute name="title">
+       <string>Satellites</string>
+      </attribute>
+      <layout class="QGridLayout" name="gridLayout_4">
+       <item row="4" column="1" colspan="2">
+        <widget class="QPushButton" name="SatelliteRemove">
+         <property name="text">
+          <string>Delete satellite</string>
+         </property>
+        </widget>
+       </item>
+       <item row="1" column="0">
+        <widget class="QLabel" name="label_5">
+         <property name="text">
+          <string>Tracked satellites:</string>
+         </property>
+        </widget>
+       </item>
+       <item row="0" column="1" colspan="3">
+        <widget class="QLineEdit" name="UpdateRate">
+         <property name="text">
+          <string>1000</string>
+         </property>
+         <property name="placeholderText">
+          <string>Enter a value in milliseconds</string>
+         </property>
+        </widget>
+       </item>
+       <item row="3" column="0" colspan="4">
+        <widget class="QLineEdit" name="SatelliteIDbox">
+         <property name="placeholderText">
+          <string>Type the 5 digit NORAD ID number of the satellites you want to track here</string>
          </property>
         </widget>
        </item>
        <item row="4" column="0">
-        <widget class="QLineEdit" name="LonInputBox">
+        <widget class="QPushButton" name="SatelliteAdd">
          <property name="text">
-          <string>-123.393333</string>
-         </property>
-         <property name="placeholderText">
-          <string>Input longitude here</string>
+          <string>Add satellite</string>
          </property>
         </widget>
        </item>
-       <item row="1" column="1" colspan="2">
-        <spacer name="horizontalSpacer">
+       <item row="5" column="0" colspan="4">
+        <widget class="QListView" name="SatelliteList"/>
+       </item>
+       <item row="4" column="3">
+        <spacer name="horizontalSpacer_4">
          <property name="orientation">
           <enum>Qt::Orientation::Horizontal</enum>
          </property>
@@ -107,33 +223,10 @@
          </property>
         </spacer>
        </item>
-       <item row="5" column="1">
-        <spacer name="verticalSpacer">
-         <property name="orientation">
-          <enum>Qt::Orientation::Vertical</enum>
-         </property>
-         <property name="sizeHint" stdset="0">
-          <size>
-           <width>20</width>
-           <height>40</height>
-          </size>
-         </property>
-        </spacer>
-       </item>
-       <item row="2" column="0" colspan="3">
-        <widget class="QLabel" name="label_2">
+       <item row="0" column="0">
+        <widget class="QLabel" name="label">
          <property name="text">
-          <string>Or:</string>
-         </property>
-         <property name="alignment">
-          <set>Qt::AlignmentFlag::AlignCenter</set>
-         </property>
-        </widget>
-       </item>
-       <item row="3" column="1" rowspan="2">
-        <widget class="QPushButton" name="LoadButton">
-         <property name="text">
-          <string>Load from file</string>
+          <string>Satellite update rate (msec):</string>
          </property>
         </widget>
        </item>
@@ -230,96 +323,7 @@
        </item>
       </layout>
      </widget>
-     <widget class="QWidget" name="tab_5">
-      <attribute name="title">
-       <string>Satellites</string>
-      </attribute>
-      <layout class="QGridLayout" name="gridLayout_4">
-       <item row="4" column="1">
-        <widget class="QPushButton" name="SatelliteRemove">
-         <property name="text">
-          <string>Delete satellite</string>
-         </property>
-        </widget>
-       </item>
-       <item row="4" column="0">
-        <widget class="QPushButton" name="SatelliteAdd">
-         <property name="text">
-          <string>Add satellite</string>
-         </property>
-        </widget>
-       </item>
-       <item row="0" column="0">
-        <widget class="QLabel" name="label">
-         <property name="text">
-          <string>Satellite update rate:</string>
-         </property>
-        </widget>
-       </item>
-       <item row="5" column="0" colspan="2">
-        <widget class="QListView" name="SatelliteList"/>
-       </item>
-       <item row="3" column="0" colspan="2">
-        <widget class="QLineEdit" name="SatelliteIDbox">
-         <property name="placeholderText">
-          <string>Type the 5 digit NORAD ID number of the satellites you want to track here</string>
-         </property>
-        </widget>
-       </item>
-       <item row="1" column="0">
-        <widget class="QLabel" name="label_5">
-         <property name="text">
-          <string>Tracked satellites:</string>
-         </property>
-        </widget>
-       </item>
-       <item row="0" column="1">
-        <widget class="QLineEdit" name="UpdateRate">
-         <property name="text">
-          <string>1000</string>
-         </property>
-         <property name="placeholderText">
-          <string>Enter a value in milliseconds</string>
-         </property>
-        </widget>
-       </item>
-      </layout>
-     </widget>
     </widget>
-   </item>
-   <item row="1" column="3">
-    <widget class="QPushButton" name="SaveButton_2">
-     <property name="text">
-      <string>Save</string>
-     </property>
-    </widget>
-   </item>
-   <item row="1" column="2">
-    <widget class="QPushButton" name="CancelButton">
-     <property name="text">
-      <string>Cancel</string>
-     </property>
-    </widget>
-   </item>
-   <item row="1" column="0">
-    <widget class="QPushButton" name="RestoreDefButton">
-     <property name="text">
-      <string>Restore defaults</string>
-     </property>
-    </widget>
-   </item>
-   <item row="1" column="1">
-    <spacer name="horizontalSpacer_3">
-     <property name="orientation">
-      <enum>Qt::Orientation::Horizontal</enum>
-     </property>
-     <property name="sizeHint" stdset="0">
-      <size>
-       <width>40</width>
-       <height>20</height>
-      </size>
-     </property>
-    </spacer>
    </item>
   </layout>
  </widget>

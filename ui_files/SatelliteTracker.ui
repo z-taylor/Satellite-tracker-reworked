@@ -55,6 +55,7 @@
     <addaction name="actionPreferences"/>
     <addaction name="actionManual_refresh"/>
     <addaction name="actionManual_TLE_update"/>
+    <addaction name="actionUpdate_transmitters_json"/>
    </widget>
    <widget class="QMenu" name="menuConnect">
     <property name="title">
@@ -95,6 +96,11 @@
   <action name="actionRotator">
    <property name="text">
     <string>Rotator</string>
+   </property>
+  </action>
+  <action name="actionUpdate_transmitters_json">
+   <property name="text">
+    <string>Update transmitters.json</string>
    </property>
   </action>
  </widget>
