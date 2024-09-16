@@ -2,7 +2,7 @@ import sys
 from PySide6 import QtCore
 from PySide6.QtWidgets import QApplication, QMainWindow
 from PySide6.QtUiTools import QUiLoader
-from PySide6.QtCore import QTimer, QThread, QEventLoop, Qt, Signal
+from PySide6.QtCore import QTimer, QThread, QEventLoop, Qt, QEvent
 from PySide6.QtGui import QStandardItem, QStandardItemModel, QColor, QBrush
 import os
 import platform
@@ -438,8 +438,8 @@ def tcpSendCommand(socket, command, frq=None, az=None, el=None):
           'get_freq': 'f\n',                  # Get current frequency
           'set_freq': f'F {frq}\n',           # Set frequency
           'get_mode': 'm\n',                  # Get current mode
-          'aos': '+\n',                       # Set AOS (Acquisition of Signal)
-          'los': '-\n',                       # Set LOS (Loss of Signal)
+          'aos': 'AOS\n',                       # Set AOS (Acquisition of Signal)
+          'los': 'LOS\n',                       # Set LOS (Loss of Signal)
      }
      rotctld_commands = {
           'get_az_el': 'p\n',                 # Get current azimuth and elevation
@@ -467,11 +467,13 @@ def tcpSendCommand(socket, command, frq=None, az=None, el=None):
      
 """
 class radioWorker(QThread):
-     def __init__(self, mainSelf, radio_window, sat_info):
+     def __init__(self, mainSelf, radio_window, sat_info, AOS, LOS, LOup, LOdown):
           super().__init__()
           self.mainSelf = mainSelf
           self.radio_window = radio_window
           self.sat_info = sat_info
+          self.AOS, self.LOS = AOS, LOS
+          self.LOup, self.LOdown = LOup, LOdown
 
      def run(self):
           currentSelect = self.radio_window.selectSat.currentText()
@@ -523,16 +525,15 @@ class radioWorker(QThread):
                f=float(frequencies[self.radio_window.txSelect.currentIndex()]) #frequency
                c = 299742458 #speed of light
                doppler_sh = (((dv*-1)*f)/c) #doppler shift = delta v * f / c
-               self.radio_window.targetFreq.setText(f"Target frequency: {float(round(int((currentFrq + doppler_sh))/1000000, 3)):,} MHz")
+               self.radio_window.targetFreq.setText(f"Target frequency: {float(round(int((currentFrq + doppler_sh + self.LOup - self.LOdown))/1000000, 3)):,} MHz")
                flag += 1
                if self.socket != None:
-                    tcpSendCommand(self.socket, command="set_freq", frq=(currentFrq + doppler_sh))
-                    self.radio_window.actualFreq.setText(f"Target frequency: {float(round(int(tcpSendCommand(self.socket, command='get_freq')) / 1000000, 3)):,} MHz")
+                    tcpSendCommand(self.socket, command="set_freq", frq=(currentFrq + doppler_sh + self.LOup - self.LOdown))
+                    self.radio_window.actualFreq.setText(f"Actual frequency: {float(round(int(tcpSendCommand(self.socket, command='get_freq')) / 1000000, 3)):,} MHz")
                time.sleep(1)
           
      def stop(self):
           self.run_ = False
-
 
 class main(QMainWindow):
      def __init__(self):
@@ -697,9 +698,24 @@ class main(QMainWindow):
      def radSave(self):
           print("save")
           #code to save
-     def radConnect(self, IP, port):
+     
+     def radio_interface_close(self, event):
+          for thread in self.radioThreads:
+                    thread.stop()
+                    thread.wait()
+     def eventFilter(self, obj, event):
+          if event.type() == QEvent.Close:
+               self.radio_interface_close(event)
+               return True
+          return False
+     def radConnect(self, radio_window, IP, port):
           loader = QUiLoader()
           self.RadioConnect = 0
+          self.AOS, self.LOS = False, False
+          radio_window.signalAOS.stateChanged.connect(lambda state: self.update_AOS(state))
+          radio_window.signalLOS.stateChanged.connect(lambda state: self.update_LOS(state))
+          LOup = int(radio_window.LOup.value())
+          LOdown = int(radio_window.LOdown.value())
           try:
                radio_interface_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ui_files", "RadioInterface.ui")
                radio_interface_window = loader.load(radio_interface_path, None)
@@ -718,10 +734,15 @@ class main(QMainWindow):
           type_ = "radio"
           radio_interface_window.toggleConnection.clicked.connect(lambda: self.SocketFunc(radio_interface_window, IP, port, type_))
           self.RadioSocket = None
-          worker = radioWorker(self, radio_interface_window, self.sat_info)
+          worker = radioWorker(self, radio_interface_window, self.sat_info, self.AOS, self.LOS, LOup, LOdown)
           worker.start()
+          radio_interface_window.installEventFilter(self)
           radio_interface_window.show()
           self.radioThreads.append(worker)
+     def update_AOS(self, state):
+        self.AOS = (state == 2)
+     def update_LOS(self, state):
+        self.LOS = (state == 2)
      def open_radio(self):
           loader = QUiLoader()
           try:
@@ -739,8 +760,8 @@ class main(QMainWindow):
           IP = "127.0.0.1" if IP=="" else IP
           IP = "127.0.0.1" if IP.lower()=="localhost" else IP
           port = radio_window.portBox.value()
+          radio_window.connectButton.clicked.connect(lambda: self.radConnect(radio_window, IP, port))
           radio_window.saveButton.clicked.connect(self.radSave)
-          radio_window.connectButton.clicked.connect(self.radConnect(IP, port))
           self.windows.append(radio_window)
           radio_window.show()
           loop = QEventLoop()
@@ -972,7 +993,6 @@ class main(QMainWindow):
           for thread in self.radioThreads:
                thread.stop()
                thread.wait()
-               self.radioThreads.remove(thread)
           for thread in self.rotatorThreads:
                thread.wait()
                self.rotatorThreads.remove(thread)
