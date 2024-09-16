@@ -2,7 +2,7 @@ import sys
 from PySide6 import QtCore
 from PySide6.QtWidgets import QApplication, QMainWindow
 from PySide6.QtUiTools import QUiLoader
-from PySide6.QtCore import QTimer, QThread, QEventLoop, Qt
+from PySide6.QtCore import QTimer, QThread, QEventLoop, Qt, Signal
 from PySide6.QtGui import QStandardItem, QStandardItemModel, QColor, QBrush
 import os
 import platform
@@ -14,6 +14,7 @@ from datetime import datetime
 from dateutil.relativedelta import relativedelta
 from skyfield.api import load, wgs84
 import time
+import socket
 
 def cloneMissingUIfiles(filePath, gitPath):
      print(f"UI file {filePath} missing, cloning from GitHub.....")
@@ -94,9 +95,6 @@ def writeDefPrefsFile():
           "radio_config": {
                "IP": "127.0.0.1",
                "Port": 4532,
-               "RadioType": "RX",
-               "PTTstatus": "None",
-               "VFO": "N/A",
                "LOup": 0,
                "LOdown": 0,
                "Signaling": [],
@@ -418,22 +416,123 @@ class Worker(QThread):
           t = ts.now()
           pos = (satellite - base).at(t)
           alt, az, distance = pos.altaz()
-          targetAlt = round((alt.degrees), 5) # elevation in degrees
-          targetAz = round((az.degrees), 5) # azimuth in degrees
+          targetAlt = alt.degrees # elevation in degrees
+          targetAz = az.degrees # azimuth in degrees
           _, _, distance, _, _, relative_v = pos.frame_latlon_and_rates(base)
           distance = ('{:.1f} km'.format(distance.km)) # distance in kilometers
-          dv = float(format(relative_v.km_per_s)) # delta velocity
-          relative_v = ('{:.1f} km/s'.format(relative_v.km_per_s)) # relative velocity in kilometers/second
+          dv = float(format(relative_v.m_per_s)) # delta velocity
+          relative_v = ('{:.1f} m/s'.format(relative_v.m_per_s)) # relative velocity in kilometers/second
           f=float(100) #frequency (100 MHz)
           c = 299742.458 #speed of light
-          doppler_sh = f"{round(((dv*f)/c), 5)} MHz" #doppler shift = delta v * f / c
+          doppler_sh = f"{(dv*f)/c} MHz" #doppler shift = delta v * f / c
           geocentric = satellite.at(t)
           lat, lon = wgs84.latlon_of(geocentric)
-          lat=round((lat.degrees), 5) # latitude above earth
-          lon=round((lon.degrees), 5) # longitude above earth
+          lat=lat.degrees # latitude above earth
+          lon=lon.degrees # longitude above earth
           horizon = targetAlt > 0 # false if below horizon true if above
           nextEvent = "Next Event" #shows next event, will work on later
           self.sat_info[index-1] = [name, trackSat, targetAlt, targetAz, horizon, nextEvent, distance, lat, lon, relative_v, doppler_sh]
+
+def tcpSendCommand(socket, command, frq=None, az=None, el=None):
+     rigctld_commands = {
+          'get_freq': 'f\n',                  # Get current frequency
+          'set_freq': f'F {frq}\n',           # Set frequency
+          'get_mode': 'm\n',                  # Get current mode
+          'aos': '+\n',                       # Set AOS (Acquisition of Signal)
+          'los': '-\n',                       # Set LOS (Loss of Signal)
+     }
+     rotctld_commands = {
+          'get_az_el': 'p\n',                 # Get current azimuth and elevation
+          'set_az_el': f'P {az} {el}\n',      # Set azimuth and elevation
+          'stop': 'S\n',                      # Stop the rotator
+          'park': 'K\n',                      # Park the rotator
+          'reset': 'R\n',                     # Reset the rotator
+     }
+     if command in rigctld_commands:
+          cmd_str = rigctld_commands[command]
+     elif command in rotctld_commands:
+          cmd_str = rotctld_commands[command]
+     else:
+          raise ValueError(f"Invalid command: {command}")
+     try:
+          socket.sendall(cmd_str.encode())
+          response = socket.recv(1024).decode()
+          return response
+     except socket.error as e:
+          return f"Socket error: {e}"
+     except BrokenPipeError:
+          return "Broken pipe error: connection broken from other end"
+
+"""class rotatorWorker(QThread):
+     
+"""
+class radioWorker(QThread):
+     def __init__(self, mainSelf, radio_window, sat_info):
+          super().__init__()
+          self.mainSelf = mainSelf
+          self.radio_window = radio_window
+          self.sat_info = sat_info
+
+     def run(self):
+          currentSelect = self.radio_window.selectSat.currentText()
+          try:
+               with open("activeTransmitters.json", "r") as f:
+                    transmitters = json.load(f)
+          except:
+               fetchTransmitters()
+               updateUsedTransmitters()
+               with open("activeTransmitters.json", "r") as f:
+                    transmitters = json.load(f)
+          self.run_ = True
+          flag = 0
+          frequencies = []
+          frqWithNames = []
+          while self.run_:
+               self.socket = self.mainSelf.RadioSocket
+               newSat = self.radio_window.selectSat.currentText()
+               if newSat != currentSelect or flag<1:
+                    for satellite in self.mainSelf.sat_info:
+                         if self.radio_window.selectSat.currentText() in satellite:
+                              selectID = satellite[1]
+                              currentSat = satellite
+                              currentSelect = self.radio_window.selectSat.currentText()
+                    data = []
+                    for transmitter in transmitters:
+                         if int(transmitter.get('norad_cat_id')) == int(selectID):
+                              data.append(transmitter)
+                    frequencies.clear()
+                    frqWithNames.clear()
+                    for item in data:
+                         downlink_freq = item['downlink_high'] if item['downlink_high'] is not None else item['downlink_low']
+                         description = item['description']
+                         frequencies.append(downlink_freq)
+                         frqWithNames.append(f"{float(downlink_freq)/1000000}MHz {description}")
+                    if frqWithNames !=[]:
+                         self.radio_window.txSelect.clear()
+                         self.radio_window.txSelect.addItems(frqWithNames)
+               else:
+                    for satellite in self.mainSelf.sat_info:
+                         if self.radio_window.selectSat.currentText() in satellite:
+                              currentSat = satellite
+               currentFrq = frequencies[(self.radio_window.txSelect.currentIndex() + 1 if self.radio_window.txSelect.currentIndex() == -1 else self.radio_window.txSelect.currentIndex())]
+               self.radio_window.targetFreq.setText(f"Target frequency: {currentFrq}")
+               try:
+                    dv = float(currentSat[9].replace(" km/s", ""))*1000
+               except:
+                    dv = float(currentSat[9].replace(" m/s", ""))
+               f=float(frequencies[self.radio_window.txSelect.currentIndex()]) #frequency
+               c = 299742458 #speed of light
+               doppler_sh = (((dv*-1)*f)/c) #doppler shift = delta v * f / c
+               self.radio_window.targetFreq.setText(f"Target frequency: {float(round(int((currentFrq + doppler_sh))/1000000, 3)):,} MHz")
+               flag += 1
+               if self.socket != None:
+                    tcpSendCommand(self.socket, command="set_freq", frq=(currentFrq + doppler_sh))
+                    self.radio_window.actualFreq.setText(f"Target frequency: {float(round(int(tcpSendCommand(self.socket, command='get_freq')) / 1000000, 3)):,} MHz")
+               time.sleep(1)
+          
+     def stop(self):
+          self.run_ = False
+
 
 class main(QMainWindow):
      def __init__(self):
@@ -462,6 +561,8 @@ class main(QMainWindow):
           self.ui.actionUpdate_transmitters_json.triggered.connect(lambda: updateUsedTransmitters(self.read_instance.SatIDs))
 
           self.threads = []
+          self.radioThreads = []
+          self.rotatorThreads = []
           self.event_loop = QEventLoop()
           updateUnit = self.read_instance.unit
           self.timer2 = QTimer(self)
@@ -574,28 +675,72 @@ class main(QMainWindow):
                writeDefPrefsFile()
                self.refresh_preferences()
 
+     def SocketFunc(self, window, IP, port, type_=None):
+          if type_ == "radio" and self.RadioConnect == 0:
+               try:
+                    self.RadioSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                    self.RadioSocket.connect((IP, port))
+                    self.RadioConnect = 1
+                    window.toggleConnection.setStyleSheet("QPushButton { color: #00FF00; }")
+               except socket.error as e:
+                    print(f"Error ({e}) while attempting connection")
+                    self.RadioSocket = None
+          elif type_ == "radio" and self.RadioConnect == 1:
+               self.RadioConnect = 0
+               self.RadioSocket = None
+               window.toggleConnection.setStyleSheet("")
+          elif type_ == "rotator" and self.RadioConnect == 0:
+               self.RotatorConnect = 1
+          elif type_ == "rotator" and self.RadioConnect == 1:
+               self.RotatorConnect = 0
 
      def radSave(self):
           print("save")
           #code to save
-     def radConnect(self):
-          print("connect")
-          #code to connect
+     def radConnect(self, IP, port):
+          loader = QUiLoader()
+          self.RadioConnect = 0
+          try:
+               radio_interface_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ui_files", "RadioInterface.ui")
+               radio_interface_window = loader.load(radio_interface_path, None)
+          except:
+               filePath = (os.path.join(os.path.dirname(os.path.abspath(__file__)), "ui_files", "RadioInterface.ui"))
+               gitPath = "RadioInterface.ui"
+               cloneMissingUIfiles(filePath, gitPath)
+               radio_interface_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ui_files", "RadioInterface.ui")
+               radio_interface_window = loader.load(radio_interface_path, None)
+          names = []
+          self.windows.append(radio_interface_window)
+          for satellite in self.sat_info:
+               names.append(satellite[0])
+          radio_interface_window.selectSat.clear()
+          radio_interface_window.selectSat.addItems(names)
+          type_ = "radio"
+          radio_interface_window.toggleConnection.clicked.connect(lambda: self.SocketFunc(radio_interface_window, IP, port, type_))
+          self.RadioSocket = None
+          worker = radioWorker(self, radio_interface_window, self.sat_info)
+          worker.start()
+          radio_interface_window.show()
+          self.radioThreads.append(worker)
      def open_radio(self):
           loader = QUiLoader()
-          
           try:
                radio_ui_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ui_files", "Radio.ui")
                radio_window = loader.load(radio_ui_path, None)
           except:
+               print("error")
                filePath = (os.path.join(os.path.dirname(os.path.abspath(__file__)), "ui_files", "Radio.ui"))
-               gitPath = "Rotator.ui"
+               gitPath = "Radio.ui"
                cloneMissingUIfiles(filePath, gitPath)
                radio_ui_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ui_files", "Radio.ui")
                radio_window = loader.load(radio_ui_path, None)
           
+          IP = radio_window.ipBox.text()
+          IP = "127.0.0.1" if IP=="" else IP
+          IP = "127.0.0.1" if IP.lower()=="localhost" else IP
+          port = radio_window.portBox.value()
           radio_window.saveButton.clicked.connect(self.radSave)
-          radio_window.connectButton.clicked.connect(self.radConnect)
+          radio_window.connectButton.clicked.connect(self.radConnect(IP, port))
           self.windows.append(radio_window)
           radio_window.show()
           loop = QEventLoop()
@@ -605,7 +750,7 @@ class main(QMainWindow):
           print("save")
           #code to save
      def rotConnect(self):
-          print("connect")
+          self.RotatorConnect = 0
           #code to connect
      def open_rotator(self):
           loader = QUiLoader()
@@ -618,8 +763,8 @@ class main(QMainWindow):
                cloneMissingUIfiles(filePath, gitPath)
                rotator_ui_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ui_files", "Rotator.ui")
                rotator_window = loader.load(rotator_ui_path, None)
-          rotator_window.saveButton.clicked.connect(self.rotSave)
-          rotator_window.connectButton.clicked.connect(self.rotConnect)
+          rotator_window.saveButton.clicked.connect(lambda: self.rotSave)
+          rotator_window.connectButton.clicked.connect(lambda: self.rotConnect)
           self.windows.append(rotator_window)
           rotator_window.show()
           loop = QEventLoop()
@@ -665,6 +810,7 @@ class main(QMainWindow):
                except:
                     fetchTLEs(self)
                     updateUsedTLEs(self)
+                    satellites = load.tle_file("UsedTLEs.txt", reload=True)
                by_number = {sat.model.satnum: sat for sat in satellites}
                base = wgs84.latlon(float(latitude), float(longitude))
                ts = load.timescale()
@@ -780,12 +926,25 @@ class main(QMainWindow):
      def update_sat_info(self, tableView, model):
           self.create_threads(self.read_instance.SatIDs, self.read_instance.latitude, self.read_instance.longitude)
           self.event_loop = QEventLoop()
+          sat_table = self.sat_info
           QTimer.singleShot(0, self.event_loop.quit)
           self.event_loop.exec()
-          while self.sat_info[(len(self.sat_info) - 1)] == []:
+          while sat_table[(len(sat_table) - 1)] == []:
                time.sleep(0.01)
           model.removeRows(0, model.rowCount())
-          for row_data in self.sat_info:
+          index = 0
+          for satellite in sat_table: #round all numbers in table to 5 decimal points
+               az, el, distance, lat, lon, relative_velocity, dop_shift = satellite[2], satellite[3], satellite[6], satellite[7], satellite[8], satellite[9], satellite[10]
+               az, el, lat, lon = round(float(az), 5), round(float(el), 5), round(float(lat), 5), round(float(lon), 5)
+               dop_temp = dop_shift.replace(" MHz", "")
+               dop_shift = f"{round(float(dop_temp), 5)} MHz"
+               relative_temp = relative_velocity.replace(" m/s", "")
+               relative_velocity = f"{round((float(relative_temp))/1000, 5)} km/s"
+               distance_temp = distance.replace(" km", "").replace(",", "")
+               distance = f"{round(float(distance_temp), 5)} km"
+               sat_table[index][2], sat_table[index][3], sat_table[index][6], sat_table[index][7], sat_table[index][8], sat_table[index][9], sat_table[index][10] = az, el, distance, lat, lon, relative_velocity, dop_shift
+               index += 1
+          for row_data in sat_table:
                items = [QStandardItem(str(item)) for item in row_data]
                model.appendRow(items)
                for item in items:
@@ -808,8 +967,15 @@ class main(QMainWindow):
                self.event_loop.quit()
      def closeEvent(self, event):
           for thread in self.threads:
-                    thread.wait()
-                    self.threads.remove(thread)
+               thread.wait()
+               self.threads.remove(thread)
+          for thread in self.radioThreads:
+               thread.stop()
+               thread.wait()
+               self.radioThreads.remove(thread)
+          for thread in self.rotatorThreads:
+               thread.wait()
+               self.rotatorThreads.remove(thread)
           for window in self.windows:
                window.close()
 

@@ -30,6 +30,6 @@ else
     echo "pip is already installed"
 fi
 python3 -m pip install --upgrade pip --break-system-packages
-pip3 install --break-system-packages PySide6 geocoder requests pyhigh pyproj skyfield python-dateutil pyhamlib
+pip3 install --break-system-packages PySide6 geocoder requests pyhigh pyproj skyfield python-dateutil
 echo "Press enter to continue....."
 read

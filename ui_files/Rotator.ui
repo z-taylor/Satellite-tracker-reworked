@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>287</width>
+    <width>300</width>
     <height>300</height>
    </rect>
   </property>
@@ -163,7 +163,7 @@
       <item row="1" column="0">
        <widget class="QPushButton" name="connectButton">
         <property name="text">
-         <string>Connect</string>
+         <string>Open rotator interface</string>
         </property>
        </widget>
       </item>
