@@ -17,7 +17,7 @@
    </sizepolicy>
   </property>
   <property name="windowTitle">
-   <string>MainWindow</string>
+   <string>Satellite tracker</string>
   </property>
   <widget class="QWidget" name="centralwidget">
    <layout class="QGridLayout" name="gridLayout">
@@ -53,9 +53,8 @@
      <string>Edit</string>
     </property>
     <addaction name="actionPreferences"/>
-    <addaction name="actionManual_refresh"/>
-    <addaction name="actionManual_TLE_update"/>
-    <addaction name="actionUpdate_transmitters_json"/>
+    <addaction name="actionRadio_connection"/>
+    <addaction name="actionRotator_connection"/>
    </widget>
    <widget class="QMenu" name="menuConnect">
     <property name="title">
@@ -64,7 +63,15 @@
     <addaction name="actionRadio"/>
     <addaction name="actionRotator"/>
    </widget>
+   <widget class="QMenu" name="menuAction">
+    <property name="title">
+     <string>Action</string>
+    </property>
+    <addaction name="actionManual_TLE_update"/>
+    <addaction name="actionUpdate_transmitters_json"/>
+   </widget>
    <addaction name="menuwasd"/>
+   <addaction name="menuAction"/>
    <addaction name="menuConnect"/>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
@@ -101,6 +108,16 @@
   <action name="actionUpdate_transmitters_json">
    <property name="text">
     <string>Update transmitters.json</string>
+   </property>
+  </action>
+  <action name="actionRadio_connection">
+   <property name="text">
+    <string>Radio connection</string>
+   </property>
+  </action>
+  <action name="actionRotator_connection">
+   <property name="text">
+    <string>Rotator connection</string>
    </property>
   </action>
  </widget>

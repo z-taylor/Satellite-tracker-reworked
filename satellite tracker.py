@@ -435,9 +435,9 @@ class Worker(QThread):
 
 def tcpSendCommand(socket, command, frq=None, az=None, el=None):
      rigctld_commands = {
-          'get_freq': 'f\n',                  # Get current frequency
-          'set_freq': f'F {frq}\n',           # Set frequency
-          'get_mode': 'm\n',                  # Get current mode
+          'get_freq': 'f\n',                    # Get current frequency
+          'set_freq': f'F {frq}\n',             # Set frequency
+          'get_mode': 'm\n',                    # Get current mode
           'aos': 'AOS\n',                       # Set AOS (Acquisition of Signal)
           'los': 'LOS\n',                       # Set LOS (Loss of Signal)
      }
@@ -458,10 +458,11 @@ def tcpSendCommand(socket, command, frq=None, az=None, el=None):
           socket.sendall(cmd_str.encode())
           response = socket.recv(1024).decode()
           return response
-     except socket.error as e:
-          return f"Socket error: {e}"
      except BrokenPipeError:
-          return "Broken pipe error: connection broken from other end"
+          raise BrokenPipeError("Broken pipe error. Connection terminated from other end")
+     except (OSError, ConnectionError) as e:
+          raise ValueError(e)
+
 
 """class rotatorWorker(QThread):
      
@@ -528,8 +529,18 @@ class radioWorker(QThread):
                self.radio_window.targetFreq.setText(f"Target frequency: {float(round(int((currentFrq + doppler_sh + self.LOup - self.LOdown))/1000000, 3)):,} MHz")
                flag += 1
                if self.socket != None:
-                    tcpSendCommand(self.socket, command="set_freq", frq=(currentFrq + doppler_sh + self.LOup - self.LOdown))
-                    self.radio_window.actualFreq.setText(f"Actual frequency: {float(round(int(tcpSendCommand(self.socket, command='get_freq')) / 1000000, 3)):,} MHz")
+                    try:
+                         if self.mainSelf.RadTrack == True:
+                              tcpSendCommand(self.socket, command="set_freq", frq=(int(currentFrq + doppler_sh + self.LOup - self.LOdown)))
+                         self.radio_window.actualFreq.setText(f"Actual frequency: {float(round(int(tcpSendCommand(self.socket, command='get_freq')) / 1000000, 3)):,} MHz")
+                    except ValueError as e:
+                         print(f"Error in sending command: {e}")
+                         self.run = False
+                         return
+                    except (OSError, BrokenPipeError) as e:
+                         print(f"Socket error: {e}")
+                         self.run_ = False
+                         return
                time.sleep(1)
           
      def stop(self):
@@ -554,8 +565,10 @@ class main(QMainWindow):
           self.read_instance = read(self)
           
           self.ui.actionPreferences.triggered.connect(self.open_preferences)
-          self.ui.actionRadio.triggered.connect(self.open_radio)
-          self.ui.actionRotator.triggered.connect(self.open_rotator)
+          self.ui.actionRadio_connection.triggered.connect(self.open_radio)
+          self.ui.actionRotator_connection.triggered.connect(self.open_rotator)
+          self.ui.actionRadio.triggered.connect(lambda: self.radConnect(self.read_instance.RadConfig["IP"], self.read_instance.RadConfig["Port"], self.read_instance.RadConfig["Signaling"][0], self.read_instance.RadConfig["Signaling"][1], self.read_instance.RadConfig["LOup"], self.read_instance.RadConfig["LOdown"]))
+          #self.ui.actionRotator.triggered.connect(self.rotConnect)
           self.ui.actionManual_TLE_update.triggered.connect(lambda: fetchTLEs(self))
           self.ui.actionManual_TLE_update.triggered.connect(lambda: updateUsedTLEs(self))
           self.ui.actionUpdate_transmitters_json.triggered.connect(lambda: fetchTransmitters())
@@ -676,6 +689,19 @@ class main(QMainWindow):
                writeDefPrefsFile()
                self.refresh_preferences()
 
+     def ToggleTrack(self, window, type_):
+          if type_ == "Radio" and self.RadTrack == False:
+               self.RadTrack = True
+               window.toggleTracking.setStyleSheet("QPushButton { color: #00FF00; }")
+          elif type_ == "Radio" and self.RadTrack == True:
+               self.RadTrack = False
+               window.toggleTracking.setStyleSheet("")
+          elif type_ == "Rotator" and self.RotTrack == False:
+               self.RotTrack = True
+               window.toggleTracking.setStyleSheet("QPushButton { color: #00FF00; }")
+          elif type_ == "Rotator" and self.RotTrack == True:
+               self.RotTrack = False
+               window.toggleTracking.setStyleSheet("")
      def SocketFunc(self, window, IP, port, type_=None):
           if type_ == "radio" and self.RadioConnect == 0:
                try:
@@ -683,39 +709,102 @@ class main(QMainWindow):
                     self.RadioSocket.connect((IP, port))
                     self.RadioConnect = 1
                     window.toggleConnection.setStyleSheet("QPushButton { color: #00FF00; }")
-               except socket.error as e:
+               except (ConnectionRefusedError, OSError):
+                    print(f"Connection refused: Could not connect to {IP}:{port}. Is the server running?")
+                    self.RadioSocket = None
+                    self.RadioConnect = 0
+               except ValueError as e:
                     print(f"Error ({e}) while attempting connection")
                     self.RadioSocket = None
+                    self.RadioConnect = 0
+               except BrokenPipeError:
+                    print("Broken Pipe Error: Connection terminated from other end")
+                    self.RadioSocket = None
+                    self.RadioConnect = 0
           elif type_ == "radio" and self.RadioConnect == 1:
+               self.RadioSocket.close()
                self.RadioConnect = 0
                self.RadioSocket = None
                window.toggleConnection.setStyleSheet("")
+               self.RadTrack = False
+               window.toggleTracking.setStyleSheet("")
           elif type_ == "rotator" and self.RadioConnect == 0:
                self.RotatorConnect = 1
           elif type_ == "rotator" and self.RadioConnect == 1:
                self.RotatorConnect = 0
 
-     def radSave(self):
-          print("save")
-          #code to save
+     def radSave(self, radio_window):
+          IP = radio_window.ipBox.text()
+          IP = "127.0.0.1" if IP=="" else IP
+          IP = "127.0.0.1" if IP.lower()=="localhost" else IP
+          port = radio_window.portBox.value()
+          LOup = int(radio_window.LOup.value())
+          LOdown = int(radio_window.LOdown.value())
+          AOS = radio_window.signalAOS.isChecked()
+          LOS = radio_window.signalLOS.isChecked()
+          signaling = [AOS, LOS]
+          self.read_instance.RadConfig["IP"] = IP
+          self.read_instance.RadConfig["Port"] = port
+          self.read_instance.RadConfig["LOup"] = LOup
+          self.read_instance.RadConfig["LOdown"] = LOdown
+          self.read_instance.RadConfig["Signaling"] = signaling
+          try:
+               with open("prefs.json", "r") as f:
+                    config = json.load(f)
+               newLocation = config["location"]
+               newSources = config["tle_sources"]
+               newUpdate = config["tle_update"]
+               newIDs = config["satellite_ids"]
+               newUpdateRate = config["update_rate"]
+               newlastTLEupdate = config["last_tle_update"]
+               newRotConfig = config["rotator_config"]
+          except FileNotFoundError:
+               writeDefPrefsFile()
+               with open("prefs.json", "r") as f:
+                    config = json.load(f)
+               newLocation = config["location"]
+               newSources = config["tle_sources"]
+               newUpdate = config["tle_update"]
+               newIDs = config["satellite_ids"]
+               newUpdateRate = config["update_rate"]
+               newlastTLEupdate = config["last_tle_update"]
+               newRotConfig = config["rotator_config"]
+          newRadConfig = {
+               "IP": IP,
+               "Port": port,
+               "LOup": LOup,
+               "LOdown": LOdown,
+               "Signaling": signaling,
+          }
+          newConfig = {
+               "location": newLocation,
+               "tle_sources": newSources,
+               "tle_update" : newUpdate,
+               "satellite_ids": newIDs,
+               "update_rate" : newUpdateRate,
+               "last_tle_update" : newlastTLEupdate,
+               "radio_config": newRadConfig,
+               "rotator_config": newRotConfig
+          }
+          with open("prefs.json", "w") as f:
+               json.dump(newConfig, f, indent=4)
      
      def radio_interface_close(self, event):
           for thread in self.radioThreads:
-                    thread.stop()
-                    thread.wait()
+               thread.stop()
+               thread.wait()
+               if self.RadioSocket != None:
+                    self.RadioSocket
+                    self.RadioConnect = 0
+                    self.RadioSocket = None
      def eventFilter(self, obj, event):
           if event.type() == QEvent.Close:
                self.radio_interface_close(event)
                return True
           return False
-     def radConnect(self, radio_window, IP, port):
+     def radConnect(self, IP, port, AOS, LOS, LOup, LOdown):
           loader = QUiLoader()
           self.RadioConnect = 0
-          self.AOS, self.LOS = False, False
-          radio_window.signalAOS.stateChanged.connect(lambda state: self.update_AOS(state))
-          radio_window.signalLOS.stateChanged.connect(lambda state: self.update_LOS(state))
-          LOup = int(radio_window.LOup.value())
-          LOdown = int(radio_window.LOdown.value())
           try:
                radio_interface_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ui_files", "RadioInterface.ui")
                radio_interface_window = loader.load(radio_interface_path, None)
@@ -732,17 +821,15 @@ class main(QMainWindow):
           radio_interface_window.selectSat.clear()
           radio_interface_window.selectSat.addItems(names)
           type_ = "radio"
+          self.RadTrack = False
           radio_interface_window.toggleConnection.clicked.connect(lambda: self.SocketFunc(radio_interface_window, IP, port, type_))
+          radio_interface_window.toggleTracking.clicked.connect(lambda: self.ToggleTrack(radio_interface_window, type_="Radio"))
           self.RadioSocket = None
-          worker = radioWorker(self, radio_interface_window, self.sat_info, self.AOS, self.LOS, LOup, LOdown)
+          worker = radioWorker(self, radio_interface_window, self.sat_info, AOS, LOS, LOup, LOdown)
           worker.start()
           radio_interface_window.installEventFilter(self)
           radio_interface_window.show()
           self.radioThreads.append(worker)
-     def update_AOS(self, state):
-        self.AOS = (state == 2)
-     def update_LOS(self, state):
-        self.LOS = (state == 2)
      def open_radio(self):
           loader = QUiLoader()
           try:
@@ -756,12 +843,22 @@ class main(QMainWindow):
                radio_ui_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ui_files", "Radio.ui")
                radio_window = loader.load(radio_ui_path, None)
           
+          radio_window.ipBox.setText(self.read_instance.RadConfig["IP"])
+          radio_window.portBox.setValue(self.read_instance.RadConfig["Port"])
+          radio_window.LOup.setValue(self.read_instance.RadConfig["LOup"])
+          radio_window.LOdown.setValue(self.read_instance.RadConfig["LOdown"])
+          radio_window.signalAOS.setChecked(self.read_instance.RadConfig["Signaling"][0])
+          radio_window.signalLOS.setChecked(self.read_instance.RadConfig["Signaling"][1])
+          AOS = radio_window.signalAOS.isChecked()
+          LOS = radio_window.signalLOS.isChecked()
+          LOup = int(radio_window.LOup.value())
+          LOdown = int(radio_window.LOdown.value())
           IP = radio_window.ipBox.text()
           IP = "127.0.0.1" if IP=="" else IP
           IP = "127.0.0.1" if IP.lower()=="localhost" else IP
           port = radio_window.portBox.value()
-          radio_window.connectButton.clicked.connect(lambda: self.radConnect(radio_window, IP, port))
-          radio_window.saveButton.clicked.connect(self.radSave)
+          radio_window.connectButton.clicked.connect(lambda: self.radConnect(IP, port, AOS, LOS, LOup, LOdown))
+          radio_window.saveButton.clicked.connect(lambda: self.radSave(radio_window))
           self.windows.append(radio_window)
           radio_window.show()
           loop = QEventLoop()

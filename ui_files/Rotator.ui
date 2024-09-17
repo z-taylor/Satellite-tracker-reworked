@@ -11,7 +11,7 @@
    </rect>
   </property>
   <property name="windowTitle">
-   <string>Rotator connect</string>
+   <string>Edit rotator connection</string>
   </property>
   <layout class="QGridLayout" name="gridLayout">
    <item row="5" column="2" colspan="2">

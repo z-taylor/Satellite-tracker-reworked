@@ -11,7 +11,7 @@
    </rect>
   </property>
   <property name="windowTitle">
-   <string>Radio connect</string>
+   <string>Edit radio connection</string>
   </property>
   <layout class="QGridLayout" name="gridLayout">
    <item row="2" column="2" colspan="3">
