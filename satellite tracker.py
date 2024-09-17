@@ -517,7 +517,39 @@ class radioWorker(QThread):
                     for satellite in self.mainSelf.sat_info:
                          if self.radio_window.selectSat.currentText() in satellite:
                               currentSat = satellite
-               currentFrq = frequencies[(self.radio_window.txSelect.currentIndex() + 1 if self.radio_window.txSelect.currentIndex() == -1 else self.radio_window.txSelect.currentIndex())]
+               try:
+                    currentFrq = frequencies[(self.radio_window.txSelect.currentIndex() + 1 if self.radio_window.txSelect.currentIndex() == -1 else self.radio_window.txSelect.currentIndex())]
+               except IndexError:
+                    satIDs = []
+                    for satellite in self.mainSelf.sat_info:
+                         satIDs.append(satellite[1])
+                    fetchTransmitters()
+                    updateUsedTransmitters(satIDs)
+                    try:
+                         with open("activeTransmitters.json", "r") as f:
+                              transmitters = json.load(f)
+                    except:
+                         fetchTransmitters()
+                         updateUsedTransmitters()
+                         with open("activeTransmitters.json", "r") as f:
+                              transmitters = json.load(f)
+                    frequencies = []
+                    frqWithNames = []
+                    data = []
+                    for transmitter in transmitters:
+                         if int(transmitter.get('norad_cat_id')) == int(selectID):
+                              data.append(transmitter)
+                    frequencies.clear()
+                    frqWithNames.clear()
+                    for item in data:
+                         downlink_freq = item['downlink_high'] if item['downlink_high'] is not None else item['downlink_low']
+                         description = item['description']
+                         frequencies.append(downlink_freq)
+                         frqWithNames.append(f"{float(downlink_freq)/1000000}MHz {description}")
+                    if frqWithNames !=[]:
+                         self.radio_window.txSelect.clear()
+                         self.radio_window.txSelect.addItems(frqWithNames)
+                    currentFrq = frequencies[(self.radio_window.txSelect.currentIndex() + 1 if self.radio_window.txSelect.currentIndex() == -1 else self.radio_window.txSelect.currentIndex())]
                self.radio_window.targetFreq.setText(f"Target frequency: {currentFrq}")
                try:
                     dv = float(currentSat[9].replace(" km/s", ""))*1000
