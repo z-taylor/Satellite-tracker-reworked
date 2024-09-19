@@ -1,20 +1,12 @@
-import sys
+import sys, os, platform, json, re, geocoder, requests, time, socket
 from PySide6 import QtCore
 from PySide6.QtWidgets import QApplication, QMainWindow
 from PySide6.QtUiTools import QUiLoader
 from PySide6.QtCore import QTimer, QThread, QEventLoop, Qt, QEvent
 from PySide6.QtGui import QStandardItem, QStandardItemModel, QColor, QBrush
-import os
-import platform
-import json
-import re
-import geocoder
-import requests
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
 from skyfield.api import load, wgs84
-import time
-import socket
 
 def cloneMissingUIfiles(filePath, gitPath):
      print(f"UI file {filePath} missing, cloning from GitHub.....")
@@ -76,7 +68,7 @@ def error(self, path):
      loop = QEventLoop()
      loop.exec()
 
-def writeDefPrefsFile():
+def writeDefPrefsFile(self):
      defaultConfig = {
           "location": [
                "-48.88120089", "-123.34616041"
@@ -97,7 +89,10 @@ def writeDefPrefsFile():
                "Port": 4532,
                "LOup": 0,
                "LOdown": 0,
-               "Signaling": [],
+               "Signaling": [
+                    False,
+                    False
+               ],
           },
           "rotator_config": {
                "IP": "127.0.0.1",
@@ -116,7 +111,19 @@ def writeDefPrefsFile():
      }
      with open("prefs.json", "w") as f:
           json.dump(defaultConfig, f, indent=4)
+     self.read_instance.location = defaultConfig["location"]
+     self.read_instance.TLEsources = defaultConfig["tle_sources"]
+     self.read_instance.TLEupdate = defaultConfig["tle_update"]
+     self.read_instance.lastTLEupdate = defaultConfig["last_tle_update"]
+     self.read_instance.SatIDs = defaultConfig["satellite_ids"]
+     self.read_instance.UpdateRate = defaultConfig["update_rate"]
+     self.read_instance.RadConfig = defaultConfig["radio_config"]
+     self.read_instance.RotConfig = defaultConfig["rotator_config"]
+     self.read_instance.latitude, self.read_instance.longitude = defaultConfig["location"]
+     self.read_instance.period, self.read_instance.unit = defaultConfig["tle_update"]
+
 def writeNewPrefsFile(self, preferences_window):
+     print("Saving preferences.....")
      try:
           with open("prefs.json", "r") as f:
                config = json.load(f)
@@ -124,7 +131,7 @@ def writeNewPrefsFile(self, preferences_window):
           newRadConfig = config["radio_config"]
           newRotConfig = config["rotator_config"]
      except FileNotFoundError:
-          writeDefPrefsFile()
+          writeDefPrefsFile(self)
           with open("prefs.json", "r") as f:
                config = json.load(f)
           newlastTLEupdate = config["last_tle_update"]
@@ -199,6 +206,7 @@ def writeNewPrefsFile(self, preferences_window):
      }
      with open("prefs.json", "w") as f:
           json.dump(newConfig, f, indent=4)
+     print("Preferences saved")
 
 def addSource(self, preferences_window):
      pattern = re.compile(
@@ -266,7 +274,7 @@ class read:
                self.RadConfig = config["radio_config"]
                self.RotConfig = config["rotator_config"]
           except:
-               writeDefPrefsFile()
+               writeDefPrefsFile(mainSelf)
                with open("prefs.json", "r") as f:
                     config = json.load(f)
                self.location = config["location"]
@@ -523,7 +531,6 @@ class radioWorker(QThread):
                     satIDs = []
                     for satellite in self.mainSelf.sat_info:
                          satIDs.append(satellite[1])
-                    fetchTransmitters()
                     updateUsedTransmitters(satIDs)
                     try:
                          with open("activeTransmitters.json", "r") as f:
@@ -546,21 +553,27 @@ class radioWorker(QThread):
                          description = item['description']
                          frequencies.append(downlink_freq)
                          frqWithNames.append(f"{float(downlink_freq)/1000000}MHz {description}")
+                    if frequencies == []:
+                         frequencies = [None]
+                         frqWithNames = ["No transmitters available"]
+                         currentFrq = float(0)
                     if frqWithNames !=[]:
                          self.radio_window.txSelect.clear()
                          self.radio_window.txSelect.addItems(frqWithNames)
-                    currentFrq = frequencies[(self.radio_window.txSelect.currentIndex() + 1 if self.radio_window.txSelect.currentIndex() == -1 else self.radio_window.txSelect.currentIndex())]
+                    else:
+                         currentFrq = frequencies[(self.radio_window.txSelect.currentIndex() + 1 if self.radio_window.txSelect.currentIndex() == -1 else self.radio_window.txSelect.currentIndex())]
                self.radio_window.targetFreq.setText(f"Target frequency: {currentFrq}")
                try:
                     dv = float(currentSat[9].replace(" km/s", ""))*1000
                except:
                     dv = float(currentSat[9].replace(" m/s", ""))
-               f=float(frequencies[self.radio_window.txSelect.currentIndex()]) #frequency
+               f = (float(frequencies[self.radio_window.txSelect.currentIndex()])) if frequencies != [None] else 0 #frequency
                c = 299742458 #speed of light
                doppler_sh = (((dv*-1)*f)/c) #doppler shift = delta v * f / c
-               self.radio_window.targetFreq.setText(f"Target frequency: {float(round(int((currentFrq + doppler_sh + self.LOup - self.LOdown))/1000000, 3)):,} MHz")
+               if frequencies != [None]:
+                    self.radio_window.targetFreq.setText(f"Target frequency: {float(round(int((currentFrq + doppler_sh + self.LOup - self.LOdown))/1000000, 3)):,} MHz")
                flag += 1
-               if self.socket != None:
+               if self.socket != None and frequencies != [None]:
                     try:
                          if self.mainSelf.RadTrack == True:
                               tcpSendCommand(self.socket, command="set_freq", frq=(int(currentFrq + doppler_sh + self.LOup - self.LOdown)))
@@ -582,6 +595,7 @@ class main(QMainWindow):
      def __init__(self):
           super(main, self).__init__()
           loader = QUiLoader()
+          self.read_instance = read(self)
           try:
                ui_file_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ui_files", "SatelliteTracker.ui")
                self.ui = loader.load(ui_file_path, None)
@@ -594,7 +608,6 @@ class main(QMainWindow):
           self.setCentralWidget(self.ui)
 
           self.windows = []
-          self.read_instance = read(self)
           
           self.ui.actionPreferences.triggered.connect(self.open_preferences)
           self.ui.actionRadio_connection.triggered.connect(self.open_radio)
@@ -640,7 +653,7 @@ class main(QMainWindow):
                confirm_ui_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ui_files", "ConfirmChoice.ui")
                confirm_window = loader.load(confirm_ui_path, None)
           self.windows.append(confirm_window)
-          confirm_window.YesButton.clicked.connect(lambda: writeDefPrefsFile())
+          confirm_window.YesButton.clicked.connect(lambda: writeDefPrefsFile(self))
           confirm_window.YesButton.clicked.connect(lambda: confirm_window.close())
           confirm_window.YesButton.clicked.connect(lambda: self.windows.remove(confirm_window))
           confirm_window.YesButton.clicked.connect(lambda: self.refresh_preferences())
@@ -718,7 +731,7 @@ class main(QMainWindow):
                     self.read_instance.SatIDs = config["satellite_ids"]
                     self.read_instance.UpdateRate = config["update_rate"]
           except FileNotFoundError:
-               writeDefPrefsFile()
+               writeDefPrefsFile(self)
                self.refresh_preferences()
 
      def ToggleTrack(self, window, type_):
@@ -766,6 +779,7 @@ class main(QMainWindow):
                self.RotatorConnect = 0
 
      def radSave(self, radio_window):
+          print("Saving radio configuration.....")
           IP = radio_window.ipBox.text()
           IP = "127.0.0.1" if IP=="" else IP
           IP = "127.0.0.1" if IP.lower()=="localhost" else IP
@@ -791,7 +805,7 @@ class main(QMainWindow):
                newlastTLEupdate = config["last_tle_update"]
                newRotConfig = config["rotator_config"]
           except FileNotFoundError:
-               writeDefPrefsFile()
+               writeDefPrefsFile(self)
                with open("prefs.json", "r") as f:
                     config = json.load(f)
                newLocation = config["location"]
@@ -820,6 +834,7 @@ class main(QMainWindow):
           }
           with open("prefs.json", "w") as f:
                json.dump(newConfig, f, indent=4)
+          print("New radio configuration saved")
      
      def radio_interface_close(self, event):
           for thread in self.radioThreads:
@@ -1104,10 +1119,9 @@ class main(QMainWindow):
                if status_item:
                     is_false = status_item.text().lower() == 'false'
                     color = QColor("red") if is_false else QColor("green")
-                    for col in range(2, 5):
-                         item = model.item(row, col)
-                         if item:
-                              item.setForeground(QBrush(color))
+                    item = model.item(row, 4)
+                    if item:
+                         item.setForeground(QBrush(color))
           tableView.resizeColumnsToContents()
 
      def increment_threads(self):
