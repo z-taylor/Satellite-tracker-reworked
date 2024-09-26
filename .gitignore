@@ -2,3 +2,7 @@ Untitled.png
 .idea/
 test.py
 Satellite tracker reworked.code-workspace
+.venv/
+satellite tracker.spec
+build/
+Pyinstaller builds/

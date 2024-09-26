@@ -64,9 +64,7 @@ def error(self, path):
      self.windows.append(error_window)
      error_window.OKbutton.clicked.connect(error_window.close)
      error_window.OKbutton.clicked.connect(lambda: self.windows.remove(error_window))
-     error_window.show()
-     loop = QEventLoop()
-     loop.exec()
+     error_window.exec()
 
 def writeDefPrefsFile(self):
      defaultConfig = {
@@ -274,7 +272,9 @@ class read:
                self.RadConfig = config["radio_config"]
                self.RotConfig = config["rotator_config"]
           except:
+               """print("Cannot find prefs.json, writing new preferences file.....")
                writeDefPrefsFile(mainSelf)
+               print("Done")
                with open("prefs.json", "r") as f:
                     config = json.load(f)
                self.location = config["location"]
@@ -285,7 +285,7 @@ class read:
                self.UpdateRate = config["update_rate"]
                self.RadConfig = config["radio_config"]
                self.RotConfig = config["rotator_config"]
-               error(self.mainSelf, "ErrorRead.ui")
+               error(self.mainSelf, "ErrorRead.ui")"""
 
           self.latitude, self.longitude = self.location
           self.period, self.unit = self.TLEupdate
@@ -595,7 +595,56 @@ class main(QMainWindow):
      def __init__(self):
           super(main, self).__init__()
           loader = QUiLoader()
-          self.read_instance = read(self)
+          self.windows = []
+          if os.path.exists(os.path.join(os.path.dirname(os.path.abspath(__file__)), "prefs.json")):
+               self.read_instance = read(self)
+          else:
+               print("Cannot find prefs.json, writing new preferences file.....")
+               defaultConfig = {
+                    "location": [
+                         "-48.88120089", "-123.34616041"
+                    ],
+                    "tle_sources": [
+                         "https://celestrak.org/NORAD/elements/gp.php?GROUP=active&FORMAT=tle"
+                    ],
+                    "tle_update" : [
+                         24, "Hours"
+                    ],
+                    "last_tle_update" : "2024-09-03 12:00:00",
+                    "satellite_ids": [
+                         "25338", "28654", "33591", "40069", "44387", "57166", "59051", "41866", "51850"
+                    ],
+                    "update_rate" : "1000",
+                    "radio_config": {
+                         "IP": "127.0.0.1",
+                         "Port": 4532,
+                         "LOup": 0,
+                         "LOdown": 0,
+                         "Signaling": [
+                              False,
+                              False
+                         ],
+                    },
+                    "rotator_config": {
+                         "IP": "127.0.0.1",
+                         "Port": 4533,
+                         "AZtype": 1,
+                         "MinMaxAz": [
+                              0,
+                              0
+                         ],
+                         "MinMaxEl": [
+                              0, 
+                              0
+                         ],
+                         "AzStop": 0,
+                    }
+               }
+               with open("prefs.json", "w") as f:
+                    json.dump(defaultConfig, f, indent=4)
+               self.read_instance = read(self)
+               print("Done")
+               error(self, "ErrorRead.ui")
           try:
                ui_file_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ui_files", "SatelliteTracker.ui")
                self.ui = loader.load(ui_file_path, None)
@@ -606,8 +655,6 @@ class main(QMainWindow):
                ui_file_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ui_files", "SatelliteTracker.ui")
                self.ui = loader.load(ui_file_path, None)
           self.setCentralWidget(self.ui)
-
-          self.windows = []
           
           self.ui.actionPreferences.triggered.connect(self.open_preferences)
           self.ui.actionRadio_connection.triggered.connect(self.open_radio)
@@ -704,6 +751,8 @@ class main(QMainWindow):
           preferences_window.SaveButton_2.clicked.connect(lambda: self.updateTimers(preferences_window))
           preferences_window.SaveButton_2.clicked.connect(lambda: writeNewPrefsFile(self, preferences_window))
           preferences_window.SaveButton_2.clicked.connect(lambda: self.refresh_preferences())
+          preferences_window.SaveButton_2.clicked.connect(lambda: preferences_window.close())
+          preferences_window.SaveButton_2.clicked.connect(lambda: self.windows.remove(preferences_window))
           preferences_window.CancelButton.clicked.connect(lambda: preferences_window.close())
           preferences_window.CancelButton.clicked.connect(lambda: self.windows.remove(preferences_window))
           preferences_window.RestoreDefButton.clicked.connect(lambda: self.restoreDefaults(preferences_window))
