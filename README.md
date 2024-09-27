@@ -1,6 +1,6 @@
 How to install:   
 Go to https://sourceforge.net/projects/satellite-tracker-reworked/files/latest/download   
-Extract the zip file, it does not matter where to.  
+Extract the downloaded zip file, it does not matter where to.  
 
 How to run:   
 If on windows, run the application in the windows binary folder  
