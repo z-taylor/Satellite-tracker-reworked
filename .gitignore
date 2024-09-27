@@ -1,11 +1,7 @@
-Untitled.png
-.idea/
-test.py
 Satellite tracker reworked.code-workspace
+.idea/
 .venv/
-satellite tracker.spec
-build/
-Pyinstaller builds/
+Pyinstaller build scripts/
 linux binary/
 windows binary/
 Satellite tracker release.zip
