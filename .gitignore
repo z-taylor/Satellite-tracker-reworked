@@ -6,5 +6,5 @@ Satellite tracker reworked.code-workspace
 satellite tracker.spec
 build/
 Pyinstaller builds/
-linux package/
-windows package/
+linux binary/
+windows binary/
