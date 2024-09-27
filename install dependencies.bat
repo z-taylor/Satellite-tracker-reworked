@@ -32,7 +32,7 @@ if %errorlevel% neq 0 (
 echo Upgrading pip.....
 python -m pip install --upgrade pip
 echo Installing packages.....
-python -m pip install PySide6 geocoder requests pyhigh pyproj skyfield python-dateutil
+python -m pip install PySide6 geocoder requests skyfield python-dateutil
 echo Installation complete
 pause
 exit /b 0

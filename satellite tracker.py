@@ -1061,7 +1061,11 @@ class main(QMainWindow):
           date1 = self.read_instance.lastTLEupdate
           if isinstance(self.read_instance.lastTLEupdate, str):
                date1 = datetime.strptime(date1, "%Y-%m-%d %H:%M:%S")
-          date2 = datetime(int(datetime.now().strftime("%Y").lstrip("0")), int(datetime.now().strftime("%m").lstrip("0")), int(datetime.now().strftime("%d").lstrip("0")), int(datetime.now().strftime("%H").lstrip("0")))
+          Year = (int(datetime.now().strftime("%Y").lstrip("0"))) if str(datetime.now().strftime("%Y")) != "00" else (int(datetime.now().strftime("%Y"))) 
+          Month = (int(datetime.now().strftime("%m").lstrip("0"))) if str(datetime.now().strftime("%m")) != "00" else (int(datetime.now().strftime("%m")))
+          Day = (int(datetime.now().strftime("%d").lstrip("0"))) if str(datetime.now().strftime("%d")) != "00" else (int(datetime.now().strftime("%d")))
+          Hour = (int(datetime.now().strftime("%H").lstrip("0"))) if str(datetime.now().strftime("%H")) != "00" else (int(datetime.now().strftime("%H")))
+          date2 = datetime(Year, Month, Day, Hour)
           difference = relativedelta(date2, date1)
           differenceMonths = difference.months
           differenceWeeks = difference.days // 7
